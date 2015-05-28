@@ -1,0 +1,69 @@
+#!/usr/bin/env ruby2.0
+
+require 'erb'
+require 'pathname'
+require 'fileutils'
+require 'digest'
+
+class Pathname
+  alias / +
+
+  def write(s)
+    File.open(to_path, "w") do |f|
+      f.write(s)
+    end
+  end
+end
+
+class NginxConfig
+  attr_reader :hosts
+
+  ERB_PATH = File.expand_path("../nginx-default.conf.erb", __dir__)
+
+  def initialize(hosts)
+    @hosts = hosts.sort_by(&:first)
+  end
+
+  def domain
+    "net.hackerschool.com"
+  end
+
+  def filename
+    digest + ".conf"
+  end
+
+  def digest
+    Digest::SHA256.hexdigest(contents)
+  end
+
+  def contents
+    erb = ERB.new(File.read(ERB_PATH))
+    erb.result(binding)
+  end
+
+  def write(path)
+    path.write(contents)
+  end
+end
+
+config = NginxConfig.new(
+  [
+    ["foo", "https://www.recurse.com"],
+    ["bar", "https://www.google.com"]
+  ]
+)
+
+CACHE_DIR = Pathname.new(File.expand_path("../cache", __dir__))
+SYMLINK_LOCATION = "/etc/nginx/sites-available/default"
+
+CACHE_DIR.mkpath
+
+cached_conf = CACHE_DIR/config.filename
+
+unless cached_conf.exist?
+  config.write(cached_conf)
+  
+  FileUtils.ln_sf(cached_conf, SYMLINK_LOCATION)
+
+  system("service nginx reload")
+end

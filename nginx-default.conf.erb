@@ -1,0 +1,27 @@
+server {
+	listen 80 default_server;
+	listen [::]:80 default_server ipv6only=on;
+
+	return 301 https://$host:8443$request_uri;
+}
+
+server {
+	listen 443 default_server;
+
+	include ssl.conf;
+
+	return 444;
+}
+<% hosts.each do |from, to| %>
+server {
+	listen 443;
+
+	include ssl.conf;
+
+	server_name <%= from %>.<%= domain %>;
+
+	location / {
+		proxy_pass <%= to %>;
+	}
+}
+<% end %>
