@@ -6,11 +6,15 @@ require 'fileutils'
 require 'digest'
 
 class Pathname
+  # Homebrew inspired hack for pretty-looking paths
   alias / +
 
-  def write(s)
-    File.open(to_path, "w") do |f|
-      f.write(s)
+  # Backport Ruby 2.1 Pathname#write
+  unless respond_to? :write
+    def write(s)
+      File.open(to_path, "w") do |f|
+        f.write(s)
+      end
     end
   end
 end
@@ -28,42 +32,82 @@ class NginxConfig
     "net.hackerschool.com"
   end
 
-  def filename
-    digest + ".conf"
-  end
-
-  def digest
-    Digest::SHA256.hexdigest(contents)
-  end
-
   def contents
-    erb = ERB.new(File.read(ERB_PATH))
-    erb.result(binding)
+    unless defined?(@contents)
+      erb = ERB.new(File.read(ERB_PATH))
+      @contents = erb.result(binding)
+    end
+
+    @contents
+  end
+  alias to_s contents
+end
+
+class ConfigCache
+  CACHE_DIR = Pathname.new(File.expand_path("../cache", __dir__))
+
+  def initialize
+    CACHE_DIR.mkpath
   end
 
-  def write(path)
-    path.write(contents)
+  def include?(obj)
+    (CACHE_DIR/filename(obj.to_s)).exist?
+  end
+
+  def store(obj)
+    s = obj.to_s
+
+    write(s) unless include?(s)
+  end
+
+  def path(obj)
+    path_name(obj.to_s).to_s
+  end
+
+private
+
+  def path_name(s)
+    CACHE_DIR/filename(s)
+  end
+
+  def write(s)
+    path = path_name(s)
+    path.write(s)
+
+    path.to_s
+  end
+
+  def filename(s)
+    digest(s) + ".conf"
+  end
+
+  def digest(s)
+    Digest::SHA256.hexdigest(s)
   end
 end
 
+cache = ConfigCache.new
+
 config = NginxConfig.new(
   [
-    ["foo", "https://www.recurse.com"],
-    ["bar", "https://www.google.com"]
+    ["foo", "https://www.google.com"],
+    ["bar", "https://codewords.recurse.com"],
+    ["baz", "https://github.com"],
+    ["hmm", "https://example.com"]
   ]
 )
 
-CACHE_DIR = Pathname.new(File.expand_path("../cache", __dir__))
 SYMLINK_LOCATION = "/etc/nginx/sites-available/default"
 
-CACHE_DIR.mkpath
+if loc = cache.store(config)
+  puts "Wrote to cache: #{loc}"
+end
 
-cached_conf = CACHE_DIR/config.filename
+path = cache.path(config)
 
-unless cached_conf.exist?
-  config.write(cached_conf)
-  
-  FileUtils.ln_sf(cached_conf, SYMLINK_LOCATION)
+unless File.readlink(SYMLINK_LOCATION) == path
+  puts "Linking new nginx conf: #{path}"
+  FileUtils.ln_sf(path, SYMLINK_LOCATION)
 
   system("service nginx reload")
 end
