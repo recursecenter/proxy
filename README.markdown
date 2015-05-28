@@ -4,6 +4,17 @@ Proxy is a nginx-based reverse proxy with TLS that runs on AWS. It was written t
 
 Proxy is designed to be a front-end for an unlimited number of webapps all hosted at \*.example.com. For each request, Proxy serves a wildcard TLS certificate for that domain.
 
+## TODO
+
+- System for deploying (zero-downtime deploys, SSL, etc.)
+- Zero downtime software updates
+- Easy SSL development setup
+- Revert broken conf and log the error (maybe upload broken conf to S3 and include link in log)
+- Log to syslog
+- Pull hosts from a web service
+- bin/proxy daemon that polls repeatedly
+- A place for config (maybe ENV, maybe elsewhere)
+
 ## Features
 
 - Nightly unattended security updates with zero downtime
