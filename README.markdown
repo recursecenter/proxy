@@ -15,6 +15,7 @@ x Log to syslog
 - Pull hosts from a web service
 - bin/proxy daemon that polls repeatedly
 - A place for config (maybe ENV, maybe elsewhere)
+- Make SSL config use current best practices
 
 ## Features
 
