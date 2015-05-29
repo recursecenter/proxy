@@ -10,18 +10,24 @@ module Proxy
   require "#{ROOT}/proxy/nginx_config"
 
   class << self
-    def production?
-      false
+    Config = Struct.new(:env)
+
+    def config
+      @config ||= Config.new
     end
 
-    def development?
-      true
+    def configure
+      yield config
+    end
+
+    def production?
+      config.env == "production"
     end
 
     def logger
       return @logger if defined?(@logger)
 
-      if Proxy.production?
+      if production?
         @logger = Syslog::Logger.new("proxy")
         @logger.level = Logger::INFO
       else

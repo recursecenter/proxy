@@ -2,7 +2,18 @@
 
 require_relative '../lib/proxy'
 
+require 'optparse'
 require 'fileutils'
+
+Proxy.configure do |config|
+  OptionParser.new do |opts|
+    opts.banner = "Usage: proxy [options]"
+
+    opts.on("-p", "--production", "Run in production") do |p|
+      config.env = p ? "production" : "development"
+    end
+  end.parse!
+end
 
 cache  = Proxy::Cache.new
 config = Proxy::NginxConfig.new(
