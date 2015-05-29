@@ -14,6 +14,7 @@ Proxy is designed to be a front-end for an unlimited number of webapps all hoste
 - Pull hosts from a web service
 - bin/proxy daemon that polls repeatedly
 - A place for config (maybe ENV, maybe elsewhere)
+- Make SSL config use current best practices
 
 ## Features
 
