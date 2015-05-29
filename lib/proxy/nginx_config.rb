@@ -3,12 +3,12 @@ require 'uri'
 
 module Proxy
   class NginxConfig
-    attr_reader :hosts
+    attr_reader :domains
 
     ERB_PATH = File.expand_path("../nginx-default.conf.erb", Proxy::ROOT)
 
-    def initialize(hosts)
-      @hosts = sanitize(hosts).sort_by(&:first)
+    def initialize(domains)
+      @domains = sanitize(domains).sort_by(&:first)
     end
 
     def domain
@@ -27,9 +27,9 @@ module Proxy
 
     private
 
-    def sanitize(hosts)
-      hosts.map do |k, v|
-        [URI.escape(k), URI.escape(v)]
+    def sanitize(domains)
+      domains.map do |from, to|
+        [URI.escape(from), URI.escape(to)]
       end
     end
   end
