@@ -7,9 +7,10 @@ module Proxy
   require "#{ROOT}/core_extensions/pathname"
 
   require "#{ROOT}/proxy/cache"
+  require "#{ROOT}/proxy/domains"
   require "#{ROOT}/proxy/nginx_config"
 
-  Config = Struct.new(:env)
+  Config = Struct.new(:env, :domains_endpoint, :domains_secret_token)
 
   class << self
     def config
