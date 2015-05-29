@@ -13,6 +13,7 @@ Proxy is designed to be a front-end for an unlimited number of webapps all hoste
 - bin/proxy daemon that polls repeatedly
 - A place for config (maybe ENV, maybe elsewhere)
 - Make SSL config use current best practices
+- Handle semicolons in URIs (nginx will execute the stuff after semicolons)
 
 ## Features
 
