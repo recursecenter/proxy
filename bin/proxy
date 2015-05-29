@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby2.0
 
-load 'lib/proxy.rb'
+require_relative '../lib/proxy'
 
 require 'fileutils'
 
