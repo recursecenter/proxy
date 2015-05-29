@@ -7,24 +7,31 @@ require 'fileutils'
 cache  = Proxy::Cache.new
 config = Proxy::NginxConfig.new(
   [
-    ["foo", "https://www.google.com"],
-    ["bar", "https://codewords.recurse.com"],
+    ["bar", "https://www.google.com"],
+    ["foo", "https://codewords.recurse.com"],
     ["baz", "https://github.com"],
-    ["hmm", "https://example.com"]
+    ["hmm", "https://github.com"]
   ]
 )
 
 SYMLINK_LOCATION = "/etc/nginx/sites-available/default"
 
-if loc = cache.store(config)
-  puts "Wrote to cache: #{loc}"
+if cache.store(config)
+  Proxy.logger.info "Wrote new conf to cache"
 end
 
 path = cache.path(config)
+current = File.readlink(SYMLINK_LOCATION)
 
-unless File.readlink(SYMLINK_LOCATION) == path
-  puts "Linking new nginx conf: #{path}"
+unless current == path
+  Proxy.logger.info "Linking new nginx conf: #{path}"
   FileUtils.ln_sf(path, SYMLINK_LOCATION)
 
-  system("service nginx reload")
+  if system("nginx -t && service nginx reload")
+    Proxy.logger.info "nginx reloaded"
+  else
+    Proxy.logger.error "nginx reload failed, relinking old conf and reloading: #{current}"
+    FileUtils.ln_sf(current, SYMLINK_LOCATION)
+    system("service nginx reload")
+  end
 end
