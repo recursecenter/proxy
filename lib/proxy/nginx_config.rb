@@ -1,4 +1,5 @@
 require 'erb'
+require 'uri'
 
 module Proxy
   class NginxConfig
@@ -7,7 +8,7 @@ module Proxy
     ERB_PATH = File.expand_path("../nginx-default.conf.erb", Proxy::ROOT)
 
     def initialize(hosts)
-      @hosts = hosts.sort_by(&:first)
+      @hosts = sanitize(hosts).sort_by(&:first)
     end
 
     def domain
@@ -23,5 +24,13 @@ module Proxy
       @contents
     end
     alias to_s contents
+
+    private
+
+    def sanitize(hosts)
+      hosts.map do |k, v|
+        [URI.escape(k), URI.escape(v)]
+      end
+    end
   end
 end
