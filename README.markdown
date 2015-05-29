@@ -1,4 +1,4 @@
-# Proxy
+# Proxy (WIP)
 
 Proxy is a nginx-based reverse proxy with TLS that runs on AWS. It was written to be the backend for a Recurse Center domain service.
 
