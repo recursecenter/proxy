@@ -1,13 +1,12 @@
 #!/usr/bin/env ruby2.0
 
 require_relative '../lib/proxy'
-
 require 'optparse'
-require 'fileutils'
 
 Proxy.configure do |config|
   config.domains_endpoint = "https://gist.githubusercontent.com/zachallaun/7d0a31c7eb9a060e4436/raw"
   config.domains_secret_token = "abcdefg123456"
+  config.poll_delay = 15
 
   OptionParser.new do |opts|
     opts.banner = "Usage: proxy [options]"
@@ -18,31 +17,4 @@ Proxy.configure do |config|
   end.parse!
 end
 
-cache = Proxy::Cache.new
-SYMLINK_LOCATION = "/etc/nginx/sites-available/default"
-
-while true
-  config = Proxy::NginxConfig.new(Proxy::Domains.fetch)
-
-  if cache.store(config)
-    Proxy.logger.info "Wrote new conf to cache"
-  end
-
-  path = cache.path(config)
-  current = File.readlink(SYMLINK_LOCATION)
-
-  unless current == path
-    Proxy.logger.info "Linking new nginx conf: #{path}"
-    FileUtils.ln_sf(path, SYMLINK_LOCATION)
-
-    if system("nginx -t && service nginx reload")
-      Proxy.logger.info "nginx reloaded"
-    else
-      Proxy.logger.error "nginx reload failed, relinking old conf and reloading: #{current}"
-      FileUtils.ln_sf(current, SYMLINK_LOCATION)
-      system("service nginx reload")
-    end
-  end
-
-  sleep(15)
-end
+Proxy.run

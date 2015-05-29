@@ -6,13 +6,30 @@ module Proxy
 
   require "#{ROOT}/core_extensions/pathname"
 
-  require "#{ROOT}/proxy/cache"
+  require "#{ROOT}/proxy/nginx"
   require "#{ROOT}/proxy/domains"
   require "#{ROOT}/proxy/nginx_config"
 
-  Config = Struct.new(:env, :domains_endpoint, :domains_secret_token)
+  Config = Struct.new(:env, :domains_endpoint, :domains_secret_token, :poll_delay)
 
   class << self
+    def run
+      nginx = Proxy::Nginx.new
+
+      loop do
+        nginx_config = Proxy::NginxConfig.new(Proxy::Domains.fetch)
+        # nginx_config = Proxy::NginxConfig.new(
+        #   [
+        #     ["bar", "https://www.google.com"],
+        #     ["foo", "https://www.recurse.com"],
+        #     ["baz", "https://github.com"]
+        #   ]
+        # )
+        nginx.reload_with_config(nginx_config)
+        sleep(config.poll_delay)
+      end
+    end
+
     def config
       @config ||= Config.new
     end

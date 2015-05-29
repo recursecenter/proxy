@@ -1,5 +1,6 @@
 require 'erb'
 require 'uri'
+require 'digest'
 
 module Proxy
   class NginxConfig
@@ -24,6 +25,18 @@ module Proxy
       @contents
     end
     alias to_s contents
+
+    def digest
+      @digest ||= Digest::SHA256.hexdigest(contents)
+    end
+
+    def ==(other)
+      if other.is_a?(NginxConfig)
+        digest == other.digest
+      else
+        false
+      end
+    end
 
     private
 
