@@ -10,7 +10,6 @@ Proxy is designed to be a front-end for an unlimited number of webapps all hoste
 - Zero downtime software updates
 - Easy SSL development setup
 - In event of broken conf, upload to S3 and include link in error msg
-- Pull hosts from a web service
 - bin/proxy daemon that polls repeatedly
 - A place for config (maybe ENV, maybe elsewhere)
 - Make SSL config use current best practices
