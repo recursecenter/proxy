@@ -9,9 +9,9 @@ module Proxy
   require "#{ROOT}/proxy/cache"
   require "#{ROOT}/proxy/nginx_config"
 
-  class << self
-    Config = Struct.new(:env)
+  Config = Struct.new(:env)
 
+  class << self
     def config
       @config ||= Config.new
     end
