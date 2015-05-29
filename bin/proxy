@@ -6,13 +6,17 @@ require 'optparse'
 Proxy.configure do |config|
   config.domains_endpoint = "https://gist.githubusercontent.com/zachallaun/7d0a31c7eb9a060e4436/raw"
   config.domains_secret_token = "abcdefg123456"
-  config.poll_delay = 15
+  config.delay = 15
 
   OptionParser.new do |opts|
     opts.banner = "Usage: proxy [options]"
 
     opts.on("-p", "--production", "Run in production") do |p|
       config.env = p ? "production" : "development"
+    end
+
+    opts.on("-d N", "--delay N", Integer, "Delay N seconds between polling for domains (default 15)") do |n|
+      config.delay = n
     end
   end.parse!
 end

@@ -10,7 +10,7 @@ module Proxy
   require "#{ROOT}/proxy/domains"
   require "#{ROOT}/proxy/nginx_config"
 
-  Config = Struct.new(:env, :domains_endpoint, :domains_secret_token, :poll_delay)
+  Config = Struct.new(:env, :domains_endpoint, :domains_secret_token, :delay)
 
   class << self
     def run
@@ -26,7 +26,7 @@ module Proxy
         #   ]
         # )
         nginx.reload_with_config(nginx_config)
-        sleep(config.poll_delay)
+        sleep(config.delay)
       end
     end
 
