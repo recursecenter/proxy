@@ -28,7 +28,7 @@ module Proxy
     def parse(json_str)
       json = JSON.parse(json_str)
 
-      unless validate(json)
+      unless valid?(json)
         raise ValidationError, "invalid domains: #{json}"
       end
 
@@ -37,17 +37,27 @@ module Proxy
       raise ParserError, "invalid json: #{json_str}"
     end
 
-    def validate(domains)
+    def valid?(domains)
       # [["from", "to"], ["from", "to"], ...]
       domains.is_a?(Array) &&
-        domains.all? { |from_to| validate_from_to(from_to) }
+        domains.all? { |from_to| valid_from_to?(from_to) }
     end
 
-    def validate_from_to(from_to)
+    def valid_from_to?(from_to)
       from_to.is_a?(Array) &&
         from_to.length == 2 &&
         from_to[0].is_a?(String) &&
-        from_to[1].is_a?(String)
+        from_to[1].is_a?(String) &&
+        valid_domain?(from_to[1])
+    end
+
+    def valid_domain?(domain)
+      uri = URI.parse(domain)
+
+      ["http", "https"].include?(uri.scheme) &&
+        uri.path.empty?
+    rescue URI::InvalidURIError => e
+      false
     end
   end
 end

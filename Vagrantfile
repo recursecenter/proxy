@@ -73,5 +73,8 @@ Vagrant.configure(2) do |config|
 
     sudo mv /etc/nginx/sites-available/default /etc/nginx/sites-available/original-default
     sudo ln -sv /vagrant/ssl.conf /etc/nginx/ssl.conf
+
+    gem2.0 install bundler
+    pushd /vagrant && bundle install -j4 && popd
   SHELL
 end
