@@ -17,6 +17,7 @@ Proxy is designed to be a front-end for an unlimited number of webapps all hoste
 - Make the HTTP => HTTPS redirect 301 instead of 302
 - TLS session resumption
 - Double check resource limits (max number of sockets, etc)
+- Env var for syslog drain
 
 ## Features
 

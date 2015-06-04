@@ -9,4 +9,6 @@ Proxy.configure do |config|
   config.delay = Integer(ENV["PROXY_DELAY"] || 15)
 end
 
+Process.daemon
+
 Proxy.run

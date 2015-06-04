@@ -27,14 +27,24 @@ Vagrant.configure(2) do |config|
     sudo apt-get install -y nginx ruby2.0
 
     sudo mv /etc/nginx/sites-available/default /etc/nginx/sites-available/original-default
-    sudo ln -sv /vagrant/ssl.conf /etc/nginx/ssl.conf
+    sudo ln -sv /vagrant/root/etc/nginx/ssl.conf /etc/nginx/ssl.conf
 
     sudo gem2.0 install bundler
     cd /vagrant && bundle install && cd -
 
     echo "Generating strong dhparam..."
     cd /etc/nginx && sudo openssl dhparam -out dhparam.pem 2048 2>/dev/null && cd -
+
+    sudo ln -sv /vagrant/root/etc/init/proxy.conf /etc/init/proxy.conf
+    sudo initctl reload-configuration
+    sudo service proxy start
   SHELL
+
+  config.vm.provider :virtualbox do |virtualbox, override|
+    override.vm.provision "shell", privileged: false, inline: <<-SHELL
+      #{common_provision}
+    SHELL
+  end
 
   config.vm.provider :aws do |aws, override|
     # Set ENV["AWS_ACCESS_KEY"] and ENV["AWS_SECRET_KEY"]
@@ -52,16 +62,6 @@ Vagrant.configure(2) do |config|
 
     override.vm.provision "shell", privileged: false, inline: <<-SHELL
       #{common_provision}
-
-      echo source /vagrant/.env.production >>~/.bashrc
-    SHELL
-  end
-
-  config.vm.provider :virtualbox do |virtualbox, override|
-    override.vm.provision "shell", privileged: false, inline: <<-SHELL
-      #{common_provision}
-
-      echo source /vagrant/.env.development >>~/.bashrc
     SHELL
   end
 end

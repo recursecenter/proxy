@@ -59,12 +59,11 @@ module Proxy
     def logger
       return @logger if defined?(@logger)
 
+      @logger = Syslog::Logger.new("proxy")
+
       if production?
-        @logger = Syslog::Logger.new("proxy")
         @logger.level = Logger::INFO
       else
-        @logger = Logger.new(STDOUT)
-        @logger.progname = "proxy"
         @logger.level = Logger::DEBUG
       end
 
