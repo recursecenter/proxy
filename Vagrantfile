@@ -34,15 +34,13 @@ Vagrant.configure(2) do |config|
 
     echo "Generating strong dhparam..."
     cd /etc/nginx && sudo openssl dhparam -out dhparam.pem 2048 2>/dev/null && cd -
-
-    sudo ln -sv /vagrant/root/etc/init/proxy.conf /etc/init/proxy.conf
-    sudo initctl reload-configuration
-    sudo service proxy start
   SHELL
 
   config.vm.provider :virtualbox do |virtualbox, override|
     override.vm.provision "shell", privileged: false, inline: <<-SHELL
       #{common_provision}
+
+      sudo /vagrant/bin/proxy-install development
     SHELL
   end
 
@@ -62,6 +60,8 @@ Vagrant.configure(2) do |config|
 
     override.vm.provision "shell", privileged: false, inline: <<-SHELL
       #{common_provision}
+
+      sudo /vagrant/bin/proxy-install production
     SHELL
   end
 end

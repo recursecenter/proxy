@@ -1,5 +1,4 @@
 .bundle
 .vagrant
 cache
-.env.development
-.env.production
+config.*.yml

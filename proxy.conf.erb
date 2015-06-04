@@ -1,0 +1,10 @@
+start on started nginx
+respawn
+
+expect daemon
+
+<% vars.each do |name, value| %>
+env <%= name %>='<%= value %>'
+<% end %>
+
+exec /vagrant/bin/proxy
