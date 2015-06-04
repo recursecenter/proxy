@@ -13,8 +13,8 @@ env = ARGV.shift
 config_file = File.expand_path("../config.#{env}.yml", __dir__)
 config = YAML.load(File.read(config_file))
 
-erb_path = File.read(File.expand_path("../proxy.conf.erb", __dir__))
-erb = ERB.new(erb_path, nil, "<>")
+erb_path = File.expand_path("../root/etc/init/proxy.conf.erb", __dir__)
+erb = ERB.new(File.read(erb_path), nil, "<>")
 
 
 puts "Writing /etc/init/proxy.conf"

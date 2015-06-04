@@ -6,7 +6,7 @@ module Proxy
   class NginxConfig
     attr_reader :domain, :mappings
 
-    ERB_PATH = File.expand_path("../nginx-default.conf.erb", Proxy::ROOT)
+    ERB_PATH = File.expand_path("../root/etc/nginx/sites-available/default.erb", Proxy::ROOT)
 
     def initialize(domain, mappings)
       @domain = domain

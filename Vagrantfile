@@ -26,7 +26,6 @@ Vagrant.configure(2) do |config|
     sudo apt-get update
     sudo apt-get install -y nginx ruby2.0
 
-    sudo mv /etc/nginx/sites-available/default /etc/nginx/sites-available/original-default
     sudo ln -sv /vagrant/root/etc/nginx/ssl.conf /etc/nginx/ssl.conf
 
     sudo gem2.0 install bundler
