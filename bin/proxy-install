@@ -11,19 +11,16 @@ end
 env = ARGV.shift
 
 config_file = File.expand_path("../config.#{env}.yml", __dir__)
-
 config = YAML.load(File.read(config_file))
 
-vars = config["env"]
-
 erb_path = File.read(File.expand_path("../proxy.conf.erb", __dir__))
-
 erb = ERB.new(erb_path, nil, "<>")
 
 
 puts "Writing /etc/init/proxy.conf"
 
 File.open("/etc/init/proxy.conf", "w") do |f|
+  vars = config["env"]
   f.write erb.result(binding)
 end
 
