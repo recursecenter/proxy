@@ -2,7 +2,7 @@ server {
 	listen 80 default_server;
 	listen [::]:80 default_server ipv6only=on;
 
-	return 301 https://$host:8443$request_uri;
+	return 301 https://$host:<%= Proxy.https_port %>$request_uri;
 }
 
 server {

@@ -55,6 +55,21 @@ Vagrant.configure(2) do |config|
   # View the documentation for the provider you are using for more
   # information on available options.
 
+  config.vm.provider :aws do |aws, override|
+    # Set ENV["AWS_ACCESS_KEY"] and ENV["AWS_SECRET_KEY"]
+    #
+    # aws.access_key_id = "YOUR KEY"
+    # aws.secret_access_key = "YOUR SECRET KEY"
+    aws.keypair_name = ""
+
+    aws.ami = "ami-d05e75b8"
+    aws.security_groups = ["proxy"]
+
+    override.ssh.username = "ubuntu"
+    override.ssh.private_key_path = "~/.ssh/id_rsa"
+    override.vm.box = "dummy"
+  end
+
   # Define a Vagrant Push strategy for pushing to Atlas. Other push strategies
   # such as FTP and Heroku are also available. See the documentation at
   # https://docs.vagrantup.com/v2/push/atlas.html for more information.

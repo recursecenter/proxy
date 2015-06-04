@@ -48,6 +48,14 @@ module Proxy
       config.env == "production"
     end
 
+    def https_port
+      if production?
+        443
+      else
+        8443
+      end
+    end
+
     def logger
       return @logger if defined?(@logger)
 
