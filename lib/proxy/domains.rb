@@ -18,7 +18,6 @@ module Proxy
       http.use_ssl = true
 
       request = Net::HTTP::Get.new(uri.request_uri)
-      request.basic_auth('', Proxy.config.domains_secret_token)
 
       response = http.request(request)
 

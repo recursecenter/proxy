@@ -13,7 +13,7 @@ require_relative "proxy/nginx"
 require_relative "proxy/nginx_config"
 
 module Proxy
-  Config = Struct.new(:env, :domain, :domains_endpoint, :domains_secret_token, :delay)
+  Config = Struct.new(:env, :domain, :domains_endpoint, :delay)
 
   class << self
     def run

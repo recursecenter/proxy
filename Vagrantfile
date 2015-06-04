@@ -14,46 +14,27 @@ Vagrant.configure(2) do |config|
   # boxes at https://atlas.hashicorp.com/search.
   config.vm.box = "ubuntu/trusty64"
 
-  # Disable automatic box update checking. If you disable this, then
-  # boxes will only be checked for updates when the user runs
-  # `vagrant box outdated`. This is not recommended.
-  # config.vm.box_check_update = false
-
   # Create a forwarded port mapping which allows access to a specific port
   # within the machine from a port on the host machine. In the example below,
   # accessing "localhost:8080" will access port 80 on the guest machine.
   config.vm.network "forwarded_port", guest: 80, host: 8080
   config.vm.network "forwarded_port", guest: 443, host: 8443
 
-  # Create a private network, which allows host-only access to the machine
-  # using a specific IP.
-  # config.vm.network "private_network", ip: "192.168.33.10"
+  common_provision = <<-SHELL
+    sudo adduser vagrant adm
 
-  # Create a public network, which generally matched to bridged network.
-  # Bridged networks make the machine appear as another physical device on
-  # your network.
-  # config.vm.network "public_network"
+    sudo apt-get update
+    sudo apt-get install -y nginx ruby2.0
 
-  # Share an additional folder to the guest VM. The first argument is
-  # the path on the host to the actual folder. The second argument is
-  # the path on the guest to mount the folder. And the optional third
-  # argument is a set of non-required options.
-  # config.vm.synced_folder "../data", "/vagrant_data"
+    sudo mv /etc/nginx/sites-available/default /etc/nginx/sites-available/original-default
+    sudo ln -sv /vagrant/ssl.conf /etc/nginx/ssl.conf
 
-  # Provider-specific configuration so you can fine-tune various
-  # backing providers for Vagrant. These expose provider-specific options.
-  # Example for VirtualBox:
-  #
-  # config.vm.provider "virtualbox" do |vb|
-  #   # Display the VirtualBox GUI when booting the machine
-  #   vb.gui = true
-  #
-  #   # Customize the amount of memory on the VM:
-  #   vb.memory = "1024"
-  # end
-  #
-  # View the documentation for the provider you are using for more
-  # information on available options.
+    sudo gem2.0 install bundler
+    cd /vagrant && bundle install && cd -
+
+    echo "Generating strong dhparam..."
+    cd /etc/nginx && sudo openssl dhparam -out dhparam.pem 2048 2>/dev/null && cd -
+  SHELL
 
   config.vm.provider :aws do |aws, override|
     # Set ENV["AWS_ACCESS_KEY"] and ENV["AWS_SECRET_KEY"]
@@ -68,30 +49,19 @@ Vagrant.configure(2) do |config|
     override.ssh.username = "ubuntu"
     override.ssh.private_key_path = "~/.ssh/id_rsa"
     override.vm.box = "dummy"
+
+    override.vm.provision "shell", privileged: false, inline: <<-SHELL
+      #{common_provision}
+
+      echo source /vagrant/.env.production >>~/.bashrc
+    SHELL
   end
 
-  # Define a Vagrant Push strategy for pushing to Atlas. Other push strategies
-  # such as FTP and Heroku are also available. See the documentation at
-  # https://docs.vagrantup.com/v2/push/atlas.html for more information.
-  # config.push.define "atlas" do |push|
-  #   push.app = "YOUR_ATLAS_USERNAME/YOUR_APPLICATION_NAME"
-  # end
+  config.vm.provider :virtualbox do |virtualbox, override|
+    override.vm.provision "shell", privileged: false, inline: <<-SHELL
+      #{common_provision}
 
-  # Enable provisioning with a shell script. Additional provisioners such as
-  # Puppet, Chef, Ansible, Salt, and Docker are also available. Please see the
-  # documentation for more information about their specific syntax and use.
-  config.vm.provision "shell", inline: <<-SHELL
-    sudo adduser vagrant adm
-
-    sudo apt-get update
-    sudo apt-get install -y nginx ruby2.0
-
-    sudo mv /etc/nginx/sites-available/default /etc/nginx/sites-available/original-default
-    sudo ln -sv /vagrant/ssl.conf /etc/nginx/ssl.conf
-
-    gem2.0 install bundler
-    pushd /vagrant && bundle install -j4 && popd
-
-    pushd /etc/nginx && sudo openssl dhparam -out dhparam.pem 2048 && popd
-  SHELL
+      echo source /vagrant/.env.development >>~/.bashrc
+    SHELL
+  end
 end

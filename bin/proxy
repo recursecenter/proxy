@@ -1,25 +1,12 @@
 #!/usr/bin/env ruby2.0
 
 require_relative '../lib/proxy'
-require 'optparse'
 
 Proxy.configure do |config|
-  config.domain = "net.hackerschool.com"
-  config.domains_endpoint = "https://gist.githubusercontent.com/zachallaun/3f1c134696865aad9626/raw"
-  config.domains_secret_token = "abcdefg123456"
-  config.delay = 15
-
-  OptionParser.new do |opts|
-    opts.banner = "Usage: proxy [options]"
-
-    opts.on("-p", "--production", "Run in production") do |p|
-      config.env = p ? "production" : "development"
-    end
-
-    opts.on("-d N", "--delay N", Integer, "Delay N seconds between polling for domains (default 15)") do |n|
-      config.delay = n
-    end
-  end.parse!
+  config.domain = ENV["PROXY_DOMAIN"] or raise "Missing $PROXY_DOMAIN"
+  config.domains_endpoint = ENV["PROXY_DOMAINS_ENDPOINT"] or raise "Missing $PROXY_DOMAINS_ENDPOINT"
+  config.env = ENV["PROXY_ENV"] || "development"
+  config.delay = Integer(ENV["PROXY_DELAY"] || 15)
 end
 
 Proxy.run
