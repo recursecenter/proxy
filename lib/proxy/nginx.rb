@@ -20,6 +20,7 @@ module Proxy
           @current_config = nginx_config
         else
           logger.error "Reload FAILED with invalid nginx conf; reverting to previous"
+          logger.error `nginx -t 2>&1`
           revert
         end
       end
