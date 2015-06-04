@@ -1,9 +1,10 @@
 require 'fileutils'
+require 'pathname'
 
 module Proxy
   class Nginx
-    CONFIG_LOCATION     = "/etc/nginx/sites-available/default"
-    OLD_CONFIG_LOCATION = "/etc/nginx/sites-available/default.old"
+    CONFIG_LOCATION     = Pathname.new("/etc/nginx/sites-available/default")
+    OLD_CONFIG_LOCATION = Pathname.new("/etc/nginx/sites-available/default.old")
 
     def initialize
       @current_config = nil
@@ -12,9 +13,10 @@ module Proxy
     def reload_with_config(nginx_config)
       unless nginx_config == @current_config
         write_config(nginx_config)
-        logger.info "Wrote nginx conf; attempting reload"
+        logger.info "Wrote nginx conf, reloading..."
 
         if reload
+          logger.info "Reloaded nginx"
           @current_config = nginx_config
         else
           logger.error "Reload FAILED with invalid nginx conf; reverting to previous"
@@ -35,11 +37,13 @@ module Proxy
     end
 
     def write_config(nginx_config)
+      unless CONFIG_LOCATION.exist?
+        CONFIG_LOCATION.write(Proxy::NullConfig.new.to_s)
+      end
+
       FileUtils.mv(CONFIG_LOCATION, OLD_CONFIG_LOCATION, force: true)
 
-      File.open(CONFIG_LOCATION, 'w') do |f|
-        f.write(nginx_config.to_s)
-      end
+      CONFIG_LOCATION.write(nginx_config.to_s)
     end
 
     def logger

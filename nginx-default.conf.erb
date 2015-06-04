@@ -12,16 +12,16 @@ server {
 
 	return 444;
 }
-<% domains.each do |from, to| %>
+<% mappings.each do |m| %>
 server {
 	listen 443;
 
 	include ssl.conf;
 
-	server_name <%= from %>.<%= domain %>;
+	server_name <%= m.subdomain %>.<%= domain %>;
 
 	location / {
-		proxy_pass <%= to %>;
+		proxy_pass <%= m.url %>;
 	}
 }
 <% end %>

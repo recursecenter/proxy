@@ -1,31 +1,37 @@
 require 'logger'
 require 'syslog/logger'
 
+require_relative "core_extensions/pathname"
+
 module Proxy
   ROOT = File.expand_path(File.dirname(__FILE__))
+end
 
-  require "#{ROOT}/core_extensions/pathname"
+require_relative "proxy/domains"
+require_relative "proxy/mapping"
+require_relative "proxy/nginx"
+require_relative "proxy/nginx_config"
 
-  require "#{ROOT}/proxy/nginx"
-  require "#{ROOT}/proxy/domains"
-  require "#{ROOT}/proxy/nginx_config"
-
-  Config = Struct.new(:env, :domains_endpoint, :domains_secret_token, :delay)
+module Proxy
+  Config = Struct.new(:env, :domain, :domains_endpoint, :domains_secret_token, :delay)
 
   class << self
     def run
       nginx = Proxy::Nginx.new
 
       loop do
-        nginx_config = Proxy::NginxConfig.new(Proxy::Domains.fetch)
-        # nginx_config = Proxy::NginxConfig.new(
-        #   [
-        #     ["bar", "https://www.google.com"],
-        #     ["foo", "https://www.recurse.com"],
-        #     ["baz", "https://github.com"]
-        #   ]
-        # )
-        nginx.reload_with_config(nginx_config)
+        begin
+          valid_mappings, invalid_mappings = Proxy::Domains.fetch
+          log_invalid_mappings(invalid_mappings)
+
+          nginx_config = Proxy::NginxConfig.new(config.domain, valid_mappings)
+          nginx.reload_with_config(nginx_config)
+
+        rescue => e
+          logger.error "#{e.class.name}: #{e.message}"
+          logger.error e.backtrace.join("\n")
+        end
+
         sleep(config.delay)
       end
     end
@@ -55,6 +61,12 @@ module Proxy
       end
 
       @logger
+    end
+
+    def log_invalid_mappings(mappings)
+      mappings.each do |mapping|
+        logger.warn("Invalid proxy mapping: #{mapping}")
+      end
     end
   end
 end

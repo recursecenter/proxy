@@ -4,7 +4,8 @@ require_relative '../lib/proxy'
 require 'optparse'
 
 Proxy.configure do |config|
-  config.domains_endpoint = "https://gist.githubusercontent.com/zachallaun/7d0a31c7eb9a060e4436/raw"
+  config.domain = "net.hackerschool.com"
+  config.domains_endpoint = "https://gist.githubusercontent.com/zachallaun/3f1c134696865aad9626/raw"
   config.domains_secret_token = "abcdefg123456"
   config.delay = 15
 

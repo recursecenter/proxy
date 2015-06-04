@@ -4,16 +4,13 @@ require 'digest'
 
 module Proxy
   class NginxConfig
-    attr_reader :domains
+    attr_reader :domain, :mappings
 
     ERB_PATH = File.expand_path("../nginx-default.conf.erb", Proxy::ROOT)
 
-    def initialize(domains)
-      @domains = sanitize(domains).sort_by(&:first)
-    end
-
-    def domain
-      "net.hackerschool.com"
+    def initialize(domain, mappings)
+      @domain = domain
+      @mappings = mappings.sort_by(&:subdomain)
     end
 
     def contents
@@ -37,13 +34,13 @@ module Proxy
         false
       end
     end
+  end
 
-    private
+  class NullConfig < NginxConfig
+    def initialize; end
 
-    def sanitize(domains)
-      domains.map do |from, to|
-        [URI.escape(from), URI.escape(to)]
-      end
+    def mappings
+      []
     end
   end
 end
