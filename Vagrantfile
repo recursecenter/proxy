@@ -91,5 +91,7 @@ Vagrant.configure(2) do |config|
 
     gem2.0 install bundler
     pushd /vagrant && bundle install -j4 && popd
+
+    pushd /etc/nginx && sudo openssl dhparam -out dhparam.pem 2048 && popd
   SHELL
 end

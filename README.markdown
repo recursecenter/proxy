@@ -15,6 +15,7 @@ Proxy is designed to be a front-end for an unlimited number of webapps all hoste
 - Make SSL config use current best practices
 - Handle semicolons in URIs (nginx will execute the stuff after semicolons)
 - Make the HTTP => HTTPS redirect 301 instead of 302
+- TLS session resumption
 
 ## Features
 
