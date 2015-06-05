@@ -26,10 +26,7 @@ Vagrant.configure(2) do |config|
     sudo apt-get update
     sudo apt-get install -y nginx ruby2.0
 
-    sudo ln -sv /vagrant/root/etc/nginx/ssl.conf /etc/nginx/ssl.conf
-
-    sudo gem2.0 install bundler
-    cd /vagrant && bundle install && cd -
+    sudo ln -sv /vagrant/backend/root/etc/nginx/ssl.conf /etc/nginx/ssl.conf
 
     echo "Generating strong dhparam..."
     cd /etc/nginx && sudo openssl dhparam -out dhparam.pem 2048 2>/dev/null && cd -
@@ -60,7 +57,7 @@ Vagrant.configure(2) do |config|
     override.vm.provision "shell", privileged: false, inline: <<-SHELL
       #{common_provision}
 
-      sudo /vagrant/bin/proxy-install production
+      sudo /vagrant/backend/bin/proxy-install production
     SHELL
   end
 end
