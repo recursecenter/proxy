@@ -18,6 +18,7 @@ Proxy is designed to be a front-end for an unlimited number of webapps all hoste
 - TLS session resumption
 - Double check resource limits (max number of sockets, etc)
 - Env var for syslog drain
+- During deploy, based on # of instances, configure unassisted updates to happen at different times
 
 ## Features
 
