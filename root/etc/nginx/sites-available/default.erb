@@ -1,16 +1,19 @@
 server {
-	listen 80 default_server;
-	listen [::]:80 default_server ipv6only=on;
-
-	return 302 https://$host:<%= Proxy.https_port %>$request_uri;
-}
-
-server {
 	listen 443 default_server;
 
 	include ssl.conf;
 
-	return 444;
+	location = /healthcheck {
+		return 200 "I am in good health!";
+	}
+
+	location / {
+		if ($http_x_forwarded_proto = "http") {
+			return 302 https://$host:<%= Proxy.https_port %>$request_uri;
+		}
+
+		return 444;
+	}
 }
 <% mappings.each do |m| %>
 server {
@@ -21,6 +24,10 @@ server {
 	server_name <%= m.subdomain %>.<%= domain %>;
 
 	location / {
+		if ($http_x_forwarded_proto = "http") {
+			return 302 https://$host:<%= Proxy.https_port %>$request_uri;
+		}
+
 		proxy_pass <%= m.url %>;
 	}
 }
