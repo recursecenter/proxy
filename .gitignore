@@ -2,3 +2,4 @@
 .vagrant
 cache
 config.*.yml
+certs
