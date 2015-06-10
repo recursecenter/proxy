@@ -20,44 +20,11 @@ Vagrant.configure(2) do |config|
   config.vm.network "forwarded_port", guest: 80, host: 8080
   config.vm.network "forwarded_port", guest: 443, host: 8443
 
-  common_provision = <<-SHELL
+  config.vm.provision "shell", privileged: false, inline: <<-SHELL
     sudo adduser vagrant adm
+    ln -s /vagrant $HOME/proxy
 
-    sudo apt-get update
-    sudo apt-get install -y nginx ruby2.0
-
-    sudo ln -sv /vagrant/backend/root/etc/nginx/ssl.conf /etc/nginx/ssl.conf
-
-    echo "Generating strong dhparam..."
-    cd /etc/nginx && sudo openssl dhparam -out dhparam.pem 2048 2>/dev/null && cd -
+    $HOME/proxy/backend/bin/setup
+    sudo $HOME/proxy/backend/bin/proxy-install development
   SHELL
-
-  config.vm.provider :virtualbox do |virtualbox, override|
-    override.vm.provision "shell", privileged: false, inline: <<-SHELL
-      #{common_provision}
-
-      sudo /vagrant/bin/proxy-install development
-    SHELL
-  end
-
-  config.vm.provider :aws do |aws, override|
-    # Set ENV["AWS_ACCESS_KEY"] and ENV["AWS_SECRET_KEY"]
-    #
-    # aws.access_key_id = "YOUR KEY"
-    # aws.secret_access_key = "YOUR SECRET KEY"
-    aws.keypair_name = ""
-
-    aws.ami = "ami-d05e75b8"
-    aws.security_groups = ["proxy"]
-
-    override.ssh.username = "ubuntu"
-    override.ssh.private_key_path = "~/.ssh/id_rsa"
-    override.vm.box = "dummy"
-
-    override.vm.provision "shell", privileged: false, inline: <<-SHELL
-      #{common_provision}
-
-      sudo /vagrant/backend/bin/proxy-install production
-    SHELL
-  end
 end
