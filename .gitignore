@@ -1,5 +1,6 @@
 .bundle
 .vagrant
+.deploy
 cache
 config.*.yml
 certs
