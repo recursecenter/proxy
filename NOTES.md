@@ -5,9 +5,9 @@ This is a process for allowing an Elastic Load Balancer to communicate securely 
 ## Generating the self-signed certificate
 
 ```sh
-openssl genrsa -out private-key.pem 2048
-openssl req -sha256 -new -key private-key.pem -out csr.pem
-openssl x509 -req -days 365 -in csr.pem -signkey private-key.pem -out cert.pem
+openssl genrsa -out key.pem 2048
+openssl req -sha256 -new -key key.pem -out csr.pem
+openssl x509 -req -days 365 -in csr.pem -signkey key.pem -out cert.pem
 ```
 
 ## Extract and upload the public key
