@@ -1,6 +1,7 @@
 require 'aws-sdk'
 require 'securerandom'
 require 'pathname'
+require 'fileutils'
 
 module Proxy
   class Deploy
@@ -23,8 +24,8 @@ module Proxy
       @ec2 = Aws::EC2::Client.new(region: region)
       @security_group = "proxy"
       @ami = "ami-d05e75b8"
-      @count = 2
-      @instance_type = "t2.medium"
+      @count = 1
+      @instance_type = "m3.medium"
       @key_name = "Zach"
     end
 
@@ -51,7 +52,46 @@ module Proxy
     def configure_all(ids)
       puts "Configuring new instances..."
 
+      unless create_tar
+        exit(1)
+      end
 
+      pages = @ec2.describe_instances(instance_ids: ids).to_a
+      hosts = pages.map do |page|
+        page.reservations.map do |reservation|
+          reservation.instances.map(&:public_dns_name)
+        end
+      end.flatten
+
+      hosts.each do |host|
+        puts "Waiting for SSH to become available at #{host}..."
+        while !system("ssh -o StrictHostKeyChecking=no ubuntu@#{host} echo hi  > /dev/null 2>&1"); end
+
+        system("scp #{tar_name} ubuntu@#{host}:~") or exit(1)
+        system("ssh ubuntu@#{host} '#{ssh_script}'") or exit(1)
+      end
+
+      puts "Instances configured"
+
+      FileUtils.rm(tar_name)
+    end
+
+    def ssh_script
+      <<-SHELL.split("\n").map(&:strip).join(" && ")
+        mkdir proxy
+        tar xjf #{tar_name} -C proxy
+        $HOME/proxy/backend/bin/setup
+        sudo $HOME/proxy/backend/bin/proxy-install production
+      SHELL
+    end
+
+    def create_tar
+      files = `git ls-files`.split("\n") + %w(certs/key.pem certs/cert.pem config.production.yml)
+      system("tar cjf #{tar_name} #{files.join(' ')}")
+    end
+
+    def tar_name
+      "proxy-#{@id}.tar.bz2"
     end
 
     def boot_new_instances
