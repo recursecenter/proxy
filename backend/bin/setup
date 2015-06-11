@@ -2,8 +2,8 @@
 
 set -ev
 
-sudo apt-get update
-sudo apt-get install -y nginx ruby2.0
+sudo apt-get -o Acquire::http::Pipeline-Depth=0 update
+sudo apt-get -o Acquire::http::Pipeline-Depth=0 install -y nginx ruby2.0
 sudo ln -s $HOME/proxy/backend/root/etc/nginx/ssl.conf /etc/nginx/ssl.conf
 sudo ln -s $HOME/proxy/certs/cert.pem /etc/nginx/cert.pem
 sudo ln -s $HOME/proxy/certs/key.pem /etc/nginx/key.pem
