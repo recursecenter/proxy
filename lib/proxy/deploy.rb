@@ -12,7 +12,8 @@ module Proxy
     REQUIRED_FILES = [
       CONFIG_FILE,
       "certs/cert.pem",
-      "certs/key.pem"
+      "certs/key.pem",
+      "certs/dhparam.pem"
     ]
 
     def initialize
