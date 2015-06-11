@@ -24,7 +24,7 @@ File.open("/etc/nginx/nginx.conf", "w") do |f|
   num_workers = `grep processor /proc/cpuinfo | wc -l`.chomp.to_i
   worker_fd_limit = global_fd_limit / num_workers
 
-  f.write upstart_erb.result(binding)
+  f.write nginx_erb.result(binding)
 end
 
 
