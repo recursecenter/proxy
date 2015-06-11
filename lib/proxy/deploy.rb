@@ -2,31 +2,36 @@ require 'aws-sdk'
 require 'securerandom'
 require 'pathname'
 require 'fileutils'
+require 'yaml'
 
 module Proxy
   class Deploy
     DEPLOY_ID_FILE = Pathname.new("./.deploy")
     DEPLOY_TAG = "proxy_deploy_id"
+    CONFIG_FILE = "config.production.yml"
     REQUIRED_FILES = [
-      "config.production.yml",
+      CONFIG_FILE,
       "certs/cert.pem",
       "certs/key.pem"
     ]
 
     def initialize
       @id = SecureRandom.uuid
-      region = "us-east-1"
+
+      aws_config = YAML.load(File.read(CONFIG_FILE))['aws']
+
+      region = aws_config['region']
 
       # Assumes credentials in ENV or ~/.aws/credentials
       @elb = Aws::ElasticLoadBalancing::Client.new(region: region)
-      @elb_name = "proxy-elb"
+      @elb_name = aws_config['elb_name']
 
       @ec2 = Aws::EC2::Client.new(region: region)
-      @security_group = "proxy"
-      @ami = "ami-d05e75b8"
-      @count = 1
-      @instance_type = "m3.medium"
-      @key_name = "Zach"
+      @security_group = aws_config['security_group']
+      @ami = aws_config['ami']
+      @instance_count = aws_config['instance_count']
+      @instance_type = aws_config['instance_type']
+      @key_name = aws_config['key_name']
     end
 
     def deploy
@@ -49,7 +54,7 @@ module Proxy
     end
 
     def terminate_instances(ids)
-      print "Removing old instances from load balancer and terminating..."
+      puts "Removing old instances from load balancer and terminating..."
 
       @elb.deregister_instances_from_load_balancer(
         load_balancer_name: @elb_name,
@@ -57,8 +62,6 @@ module Proxy
       )
 
       @ec2.terminate_instances(instance_ids: ids)
-
-      puts "terminated"
     end
 
     def register_with_elb(ids)
@@ -92,12 +95,14 @@ module Proxy
         end
       end.flatten
 
+      ssh_opts = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+
       hosts.each do |host|
         puts "Waiting for SSH to become available at #{host}..."
-        while !system("ssh -o StrictHostKeyChecking=no ubuntu@#{host} echo hi  > /dev/null 2>&1"); end
+        while !system("ssh #{ssh_opts} ubuntu@#{host} echo hi >/dev/null 2>&1"); end
 
-        system("scp #{tar_name} ubuntu@#{host}:~") or exit(1)
-        system("ssh ubuntu@#{host} '#{ssh_script}'") or exit(1)
+        system("scp #{ssh_opts} #{tar_name} ubuntu@#{host}:~") or exit(1)
+        system("ssh #{ssh_opts} ubuntu@#{host} '#{ssh_script}'") or exit(1)
       end
 
       puts "Instances configured"
@@ -129,8 +134,8 @@ module Proxy
       pages = @ec2.run_instances(
         client_token: @id,
         image_id: @ami,
-        min_count: @count,
-        max_count: @count,
+        min_count: @instance_count,
+        max_count: @instance_count,
         key_name: @key_name,
         security_groups: [@security_group],
         instance_type: @instance_type
@@ -188,7 +193,7 @@ module Proxy
         if ids.empty?
           puts "No clean up required."
         else
-          puts "Destroyed the following instances: #{ids.join(", ")}"
+          puts "Terminated the following instances: #{ids.join(", ")}"
         end
       end
     end

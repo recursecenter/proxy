@@ -19,6 +19,7 @@ Proxy is designed to be a front-end for an unlimited number of webapps all hoste
 - Double check resource limits (max number of sockets, etc)
 - Env var for syslog drain
 - During deploy, based on # of instances, configure unassisted updates to happen at different times
+- WebSocket support (see http://nginx.com/blog/websocket-nginx/)
 
 ## Features
 
@@ -27,6 +28,23 @@ Proxy is designed to be a front-end for an unlimited number of webapps all hoste
 - Dynamic updating of host list from an external HTTPS endpoint
 - Secure secret storage with easy secret updating
 - Logs to a syslog server (e.g. Papertrail)
+
+## Example config.production.yml
+
+```yml
+aws:
+  elb_name: proxy-elb
+  region: us-east-1
+  ami: ami-d05e75b8 # Ubuntu 14.04 for us-east-1
+  instance_type: m3.medium
+  instance_count: 2
+  key_name: Zach
+  security_group: proxy
+env:
+  PROXY_ENV: production
+  PROXY_DOMAIN: recurse.com
+  PROXY_DOMAINS_ENDPOINT: https://www.recurse.com/api/public/domains
+```
 
 ## Copyright
 
