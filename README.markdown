@@ -6,20 +6,17 @@ Proxy is designed to be a front-end for an unlimited number of webapps all hoste
 
 ## TODO
 
-- Test zero downtime deploys
-- Zero downtime software updates
-- Easy SSL development setup
-- In event of broken conf, upload to S3 and include link in error msg
 - TLS session resumption
-- Double check resource limits (max number of sockets, etc)
 - Env var for syslog drain
-- During deploy, based on # of instances, configure unassisted updates to happen at different times
 - WebSocket support (see http://nginx.com/blog/websocket-nginx/)
+- Config stored in the cloud to support multiple people deploying
+  - In event of broken conf, upload to S3 and include link in error msg
+  - Easy SSL development setup
 
 ## Features
 
 - Nightly unattended security updates with zero downtime
-- Easy deploys with zero downtime
+- Easy deploys with near-zero downtime
 - Dynamic updating of host list from an external HTTPS endpoint
 - Secure secret storage with easy secret updating
 - Logs to a syslog server (e.g. Papertrail)
