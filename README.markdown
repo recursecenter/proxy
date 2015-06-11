@@ -6,14 +6,10 @@ Proxy is designed to be a front-end for an unlimited number of webapps all hoste
 
 ## TODO
 
-- System for deploying (zero-downtime deploys, SSL, etc.)
+- Test zero downtime deploys
 - Zero downtime software updates
 - Easy SSL development setup
 - In event of broken conf, upload to S3 and include link in error msg
-- bin/proxy daemon that polls repeatedly
-- A place for config (maybe ENV, maybe elsewhere)
-- Make SSL config use current best practices
-- Handle semicolons in URIs (nginx will execute the stuff after semicolons)
 - Make the HTTP => HTTPS redirect 301 instead of 302
 - TLS session resumption
 - Double check resource limits (max number of sockets, etc)
