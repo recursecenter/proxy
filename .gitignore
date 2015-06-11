@@ -4,3 +4,4 @@
 cache
 config.*.yml
 certs
+proxy-*.tar.bz2
