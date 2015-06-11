@@ -173,10 +173,10 @@ module Proxy
     end
 
     def ensure_necessary_files
-      errors = REQUIRED_FILES.reject { |f| File.exist?(f) }
+      missing = REQUIRED_FILES.reject { |f| File.exist?(f) }
 
-      unless errors.empty?
-        puts "Cannot deploy. Missing: #{errors.join(", ")}"
+      unless missing.empty?
+        puts "Cannot deploy. Missing: #{missing.join(", ")}"
         exit(1)
       end
     end
