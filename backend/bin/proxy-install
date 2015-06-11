@@ -13,7 +13,7 @@ env = ARGV.shift
 
 def install(dst)
   src = File.expand_path("../root#{dst}")
-  FileUtils.cp(src, dst, force: true)
+  FileUtils.cp(src, dst)
 end
 
 if env == "production"
