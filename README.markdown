@@ -19,7 +19,7 @@ Proxy is designed to be a front-end for an unlimited number of webapps all hoste
 ## Features
 
 - Nightly unattended security updates with zero downtime
-- Turnkey deploys with zero downtime
+- Easy deploys with zero downtime
 - Dynamic updating of host list from an external HTTPS endpoint
 - Secure secret storage with easy secret updating
 - Logs to a syslog server (e.g. Papertrail)
