@@ -13,9 +13,23 @@ env = ARGV.shift
 config_file = File.expand_path("../../config.#{env}.yml", __dir__)
 config = YAML.load(File.read(config_file))
 
-erb_path = File.expand_path("../root/etc/init/proxy.conf.erb", __dir__)
-erb = ERB.new(File.read(erb_path), nil, "<>")
 
+nginx_erb_path = File.expand_path("../root/etc/nginx/nginx.conf.erb", __dir__)
+nginx_erb = ERB.new(File.read(nginx_erb_path), nil, "<>")
+
+puts "Writing /etc/nginx/nginx.conf"
+
+File.open("/etc/nginx/nginx.conf", "w") do |f|
+  global_fd_limit = 65536
+  num_workers = `grep processor /proc/cpuinfo | wc -l`.chomp.to_i
+  worker_fd_limit = global_fd_limit / num_workers
+
+  f.write upstart_erb.result(binding)
+end
+
+
+upstart_erb_path = File.expand_path("../root/etc/init/proxy.conf.erb", __dir__)
+upstart_erb = ERB.new(File.read(upstart_erb_path), nil, "<>")
 
 puts "Writing /etc/init/proxy.conf"
 
@@ -28,7 +42,7 @@ File.open("/etc/init/proxy.conf", "w") do |f|
     home_dir = '/home/vagrant'
   end
 
-  f.write erb.result(binding)
+  f.write upstart_erb.result(binding)
 end
 
 system("initctl reload-configuration")
