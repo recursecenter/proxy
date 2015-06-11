@@ -9,12 +9,7 @@ module Proxy
     DEPLOY_TAG = "proxy_deploy_id"
 
     def initialize
-      if DEPLOY_ID_FILE.exist?
-        @id = DEPLOY_ID_FILE.read
-      else
-        @id = SecureRandom.uuid
-      end
-
+      @id = SecureRandom.uuid
       region = "us-east-1"
 
       # Assumes credentials in ENV or ~/.aws/credentials
@@ -39,14 +34,42 @@ module Proxy
 
       configure_all(instance_ids)
 
-      puts "Waiting for new instances to become healthy..."
-      wait_for_healthy(instance_ids)
+      register_with_elb(instance_ids)
 
-      puts "Killing old instances..."
-      kill_instances(instance_ids_to_kill)
+      terminate_instances(instance_ids_to_kill)
+
       DEPLOY_ID_FILE.unlink
+      puts "Deploy finished"
+    end
 
-      puts "Deploy successful."
+    def terminate_instances(ids)
+      print "Removing old instances from load balancer and terminating..."
+
+      @elb.deregister_instances_from_load_balancer(
+        load_balancer_name: @elb_name,
+        instances: ids.map { |id| {instance_id: id} }
+      )
+
+      @ec2.terminate_instances(instance_ids: ids)
+
+      puts "terminated"
+    end
+
+    def register_with_elb(ids)
+      print "Registering new instances with the load balancer... "
+
+      @elb.register_instances_with_load_balancer(
+        load_balancer_name: @elb_name,
+        instances: ids.map { |id| {instance_id: id} }
+      )
+
+      @elb.wait_until(
+        :instance_in_service,
+        load_balancer_name: @elb_name,
+        instances: ids.map { |id| {instance_id: id} }
+      )
+
+      puts "registered"
     end
 
     def configure_all(ids)
@@ -72,7 +95,7 @@ module Proxy
       end
 
       puts "Instances configured"
-
+    ensure
       FileUtils.rm(tar_name)
     end
 
@@ -138,7 +161,7 @@ module Proxy
         end
       end.flatten
 
-      puts "found #{ids.empty? ? "None" : ids.join(", ")}"
+      puts "found: #{ids.empty? ? "None" : ids.join(", ")}"
 
       ids
     end
@@ -150,13 +173,22 @@ module Proxy
         if ids.empty?
           puts "No clean up required."
         else
-          puts "Destroyed the following instances: #{ids}"
+          puts "Destroyed the following instances: #{ids.join(", ")}"
         end
       end
     end
 
     def kill_all_with_uuid(uuid)
-      []
+      pages = @ec2.describe_instances(filters: [{name: "tag:#{DEPLOY_TAG}", values: [uuid]}]).to_a
+
+      ids = pages.map do |page|
+        page.reservations.map do |reservation|
+          reservation.instances.map(&:instance_id)
+        end
+      end.flatten
+
+      terminate_instances(ids)
+      ids
     end
   end
 end

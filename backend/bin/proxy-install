@@ -21,6 +21,13 @@ puts "Writing /etc/init/proxy.conf"
 
 File.open("/etc/init/proxy.conf", "w") do |f|
   vars = config["env"]
+
+  if env == 'production'
+    home_dir = '/home/ubuntu'
+  else
+    home_dir = '/home/vagrant'
+  end
+
   f.write erb.result(binding)
 end
 

@@ -7,4 +7,4 @@ expect daemon
 env <%= name %>='<%= value %>'
 <% end %>
 
-exec $HOME/proxy/backend/bin/proxy-backend
+exec <%= home_dir %>/proxy/backend/bin/proxy-backend
