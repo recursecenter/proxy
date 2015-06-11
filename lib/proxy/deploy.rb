@@ -25,6 +25,7 @@ module Proxy
     end
 
     def deploy
+      ensure_necessary_files
       clean_up_if_necessary
 
       instance_ids_to_kill = current_instance_ids
@@ -164,6 +165,26 @@ module Proxy
       puts "found: #{ids.empty? ? "None" : ids.join(", ")}"
 
       ids
+    end
+
+    def ensure_necessary_files
+      files = [
+        "config.production.yml",
+        "certs/cert.pem",
+        "certs/key.pem"
+      ]
+
+      errors = []
+      files.each do |file|
+        unless Pathname.new(file).exist?
+          errors << file
+        end
+      end
+
+      unless errors.empty?
+        puts "Cannot deploy. Missing: #{errors.join(", ")}"
+        exit(1)
+      end
     end
 
     def clean_up_if_necessary
