@@ -98,13 +98,15 @@ module Proxy
 
       ssh_opts = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
-      hosts.each do |host|
-        puts "Waiting for SSH to become available at #{host}..."
-        while !system("ssh #{ssh_opts} ubuntu@#{host} echo hi >/dev/null 2>&1"); end
+      hosts.map do |host|
+        Thread.new do
+          puts "Waiting for SSH to become available at #{host}..."
+          while !system("ssh #{ssh_opts} ubuntu@#{host} echo hi >/dev/null 2>&1"); end
 
-        system("scp #{ssh_opts} #{tar_name} ubuntu@#{host}:~") or fail
-        system("ssh #{ssh_opts} ubuntu@#{host} '#{ssh_script}'") or fail
-      end
+          system("scp #{ssh_opts} #{tar_name} ubuntu@#{host}:~") or fail
+          system("ssh #{ssh_opts} ubuntu@#{host} '#{ssh_script}'") or fail
+        end
+      end.map(&:join)
 
       puts "Instances configured"
     ensure
@@ -214,6 +216,7 @@ module Proxy
 
     def fail
       puts "Deploy failed!"
+      Process.kill(:TERM, 0)
       exit 1
     end
   end
