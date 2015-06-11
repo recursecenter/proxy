@@ -7,6 +7,11 @@ module Proxy
   class Deploy
     DEPLOY_ID_FILE = Pathname.new("./.deploy")
     DEPLOY_TAG = "proxy_deploy_id"
+    REQUIRED_FILES = [
+      "config.production.yml",
+      "certs/cert.pem",
+      "certs/key.pem"
+    ]
 
     def initialize
       @id = SecureRandom.uuid
@@ -110,7 +115,7 @@ module Proxy
     end
 
     def create_tar
-      files = `git ls-files`.split("\n") + %w(certs/key.pem certs/cert.pem config.production.yml)
+      files = `git ls-files`.split("\n") + REQUIRED_FILES
       system("tar cjf #{tar_name} #{files.join(' ')}")
     end
 
@@ -168,18 +173,7 @@ module Proxy
     end
 
     def ensure_necessary_files
-      files = [
-        "config.production.yml",
-        "certs/cert.pem",
-        "certs/key.pem"
-      ]
-
-      errors = []
-      files.each do |file|
-        unless Pathname.new(file).exist?
-          errors << file
-        end
-      end
+      errors = REQUIRED_FILES.reject { |f| File.exist?(f) }
 
       unless errors.empty?
         puts "Cannot deploy. Missing: #{errors.join(", ")}"
