@@ -10,6 +10,19 @@ end
 
 env = ARGV.shift
 
+def install(dst)
+  src = File.expand_path("../root#{dst}")
+  FileUtils.cp(src, dst, force: true)
+end
+
+if env == "production"
+  install("/etc/apt/apt.conf.d/20auto-upgrades")
+  install("/etc/apt/apt.conf.d/50unattended-upgrades")
+
+  system("apt-get install unattended-upgrades")
+  system("service unattended-upgrades restart")
+end
+
 config_file = File.expand_path("../../config.#{env}.yml", __dir__)
 config = YAML.load(File.read(config_file))
 
