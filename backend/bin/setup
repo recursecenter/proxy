@@ -2,13 +2,10 @@
 
 set -ev
 
-sudo apt-get update >/dev/null
-sudo apt-get install -y nginx ruby2.0 >/dev/null
-
+sudo apt-get update >/dev/null 2>&1
+sudo apt-get install -y nginx ruby2.0 >/dev/null 2>&1
 sudo ln -s $HOME/proxy/backend/root/etc/nginx/ssl.conf /etc/nginx/ssl.conf
-
 sudo ln -s $HOME/proxy/certs/cert.pem /etc/nginx/cert.pem
 sudo ln -s $HOME/proxy/certs/key.pem /etc/nginx/key.pem
-
 openssl dhparam -out dhparam.pem 2048 2>/dev/null
 sudo mv dhparam.pem /etc/nginx/dhparam.pem
