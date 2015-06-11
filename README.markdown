@@ -10,7 +10,6 @@ Proxy is designed to be a front-end for an unlimited number of webapps all hoste
 - Zero downtime software updates
 - Easy SSL development setup
 - In event of broken conf, upload to S3 and include link in error msg
-- Make the HTTP => HTTPS redirect 301 instead of 302
 - TLS session resumption
 - Double check resource limits (max number of sockets, etc)
 - Env var for syslog drain

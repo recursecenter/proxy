@@ -9,7 +9,7 @@ server {
 
 	location / {
 		if ($http_x_forwarded_proto = "http") {
-			return 302 https://$host:<%= Proxy.https_port %>$request_uri;
+			return 301 https://$host:<%= Proxy.https_port %>$request_uri;
 		}
 
 		return 444;
@@ -25,7 +25,7 @@ server {
 
 	location / {
 		if ($http_x_forwarded_proto = "http") {
-			return 302 https://$host:<%= Proxy.https_port %>$request_uri;
+			return 301 https://$host:<%= Proxy.https_port %>$request_uri;
 		}
 
 		proxy_pass <%= m.url %>;
