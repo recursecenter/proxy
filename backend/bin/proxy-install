@@ -12,7 +12,7 @@ end
 env = ARGV.shift
 
 def install(dst)
-  src = File.expand_path("../root#{dst}")
+  src = File.expand_path("../root#{dst}", __dir__)
   FileUtils.cp(src, dst)
 end
 
