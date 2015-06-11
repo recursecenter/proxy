@@ -2,6 +2,7 @@
 
 require 'yaml'
 require 'erb'
+require 'fileutils'
 
 if ARGV.empty?
   STDERR.puts "usage: #{$0} environment"
