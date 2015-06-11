@@ -85,7 +85,7 @@ module Proxy
       puts "Configuring new instances..."
 
       unless create_tar
-        exit(1)
+        fail
       end
 
       pages = @ec2.describe_instances(instance_ids: ids).to_a
@@ -101,8 +101,8 @@ module Proxy
         puts "Waiting for SSH to become available at #{host}..."
         while !system("ssh #{ssh_opts} ubuntu@#{host} echo hi >/dev/null 2>&1"); end
 
-        system("scp #{ssh_opts} #{tar_name} ubuntu@#{host}:~") or exit(1)
-        system("ssh #{ssh_opts} ubuntu@#{host} '#{ssh_script}'") or exit(1)
+        system("scp #{ssh_opts} #{tar_name} ubuntu@#{host}:~") or fail
+        system("ssh #{ssh_opts} ubuntu@#{host} '#{ssh_script}'") or fail
       end
 
       puts "Instances configured"
@@ -182,7 +182,7 @@ module Proxy
 
       unless missing.empty?
         puts "Cannot deploy. Missing: #{missing.join(", ")}"
-        exit(1)
+        fail
       end
     end
 
@@ -209,6 +209,11 @@ module Proxy
 
       terminate_instances(ids)
       ids
+    end
+
+    def fail
+      puts "Deploy failed!"
+      exit 1
     end
   end
 end
