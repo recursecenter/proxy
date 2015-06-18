@@ -21,6 +21,9 @@ class MappingTest < MiniTest::Test
       "other://foo.com",
       "https://foo.com/trailing",
       "https://foo.com/",
+      "https://foo.com'return",
+      "https://user'return:pass@foo.com",
+      "https://user:pass'return@foo.com"
     ].each do |url|
       assert !Proxy::Mapping.new(["foo", url]).valid_url?,
              "URL should be invalid: #{url.inspect}"
