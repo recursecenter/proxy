@@ -8,6 +8,7 @@ module Proxy
   class Deploy
     DEPLOY_ID_FILE = Pathname.new("./.deploy")
     DEPLOY_TAG = "proxy_deploy_id"
+    INSTANCE_NAME_TAG = "Name"
     CONFIG_FILE = "config.production.yml"
     REQUIRED_FILES = [
       CONFIG_FILE,
@@ -152,7 +153,10 @@ module Proxy
 
       @ec2.create_tags(
         resources: ids,
-        tags: [{key: DEPLOY_TAG, value: @id}]
+        tags: [
+          {key: DEPLOY_TAG, value: @id},
+          {key: INSTANCE_NAME_TAG, value: "proxy-web"}
+        ]
       )
 
       print "Waiting for instances to be ready... "
