@@ -18,6 +18,7 @@ module Proxy
   class << self
     def run
       nginx = Proxy::Nginx.new
+      nginx.wait_for_running
 
       loop do
         begin

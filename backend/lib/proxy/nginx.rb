@@ -10,6 +10,12 @@ module Proxy
       @current_config = nil
     end
 
+    def wait_for_running
+      until `service nginx status` =~ /running/ do
+        sleep 1
+      end
+    end
+
     def reload_with_config(nginx_config)
       unless nginx_config == @current_config
         write_config(nginx_config)
