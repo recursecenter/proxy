@@ -8,7 +8,10 @@ class MappingTest < MiniTest::Test
       "https://foo.com",
       "https://user@foo.com",
       "https://user:pass@foo.com",
-      "https://user:pass@foo.com:12345"
+      "https://user:pass@foo.com:12345",
+      "https://foo.com/trailing",
+      "https://foo.com/",
+      "https://foo.com/trailing/",
     ].each do |url|
       assert Proxy::Mapping.new(["foo", url]).valid_url?,
              "URL should be valid: #{url.inspect}"
@@ -19,8 +22,6 @@ class MappingTest < MiniTest::Test
       "ht;tps://foo.com",
       "https://foo.com;",
       "other://foo.com",
-      "https://foo.com/trailing",
-      "https://foo.com/",
       "https://foo.com'return",
       "https://user'return:pass@foo.com",
       "https://user:pass'return@foo.com"
@@ -58,6 +59,17 @@ class MappingTest < MiniTest::Test
       "https://foo:pa$$word@foo.com" => "'https://foo:pa\\$\\$word@foo.com'"
     }.each do |from, to|
       assert_equal Proxy::Mapping.new(["foo", from]).url, to
+    end
+  end
+
+  test "adds trailing slash if there is a path" do
+    {
+      "https://www.example.com/foo" => "https://www.example.com/foo/",
+      "https://www.example.com/foo/" => "https://www.example.com/foo/",
+      "https://www.example.com" => "https://www.example.com",
+      "https://www.example.com/" => "https://www.example.com/",
+    }.each do |from, to|
+      assert_equal Proxy::Mapping.new(["foo", from]).original_url, to
     end
   end
 end

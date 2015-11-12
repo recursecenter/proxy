@@ -4,8 +4,8 @@ module Proxy
 
     def initialize(from_to)
       @subdomain = from_to[0]
-      @original_url = from_to[1]
-      @url = escape_url(from_to[1])
+      @original_url = ensure_trailing_slash(from_to[1])
+      @url = escape_url(@original_url)
     end
 
     def valid?
@@ -24,7 +24,6 @@ module Proxy
       uri = URI.parse(original_url)
 
       ["http", "https"].include?(uri.scheme) &&
-        uri.path.empty? &&
         !original_url.include?("'")
     rescue URI::InvalidURIError => e
       false
@@ -39,6 +38,18 @@ module Proxy
     end
 
     private
+
+    def ensure_trailing_slash(s)
+      u = URI.parse(s)
+
+      if u.path != "" && !u.path.end_with?("/")
+        u.path += "/"
+      end
+
+      u.to_s
+    rescue URI::InvalidURIError => e
+      s
+    end
 
     def escape_url(url)
       "'#{url.gsub(/\$/, '\$')}'"
