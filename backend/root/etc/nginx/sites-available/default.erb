@@ -15,7 +15,7 @@ server {
 		return 444;
 	}
 }
-<% mappings.each_with_index do |m, i| %>
+<% mappings.each do |m| %>
 server {
 	listen 443;
 
@@ -28,8 +28,7 @@ server {
 			return 301 https://$host:<%= Proxy.https_port %>$request_uri;
 		}
 
-		set $host_<%= i %> <%= m.url %>;
-		proxy_pass $host_<%= i %>;
+		proxy_pass <%= m.url %>;
 	}
 }
 <% end %>
