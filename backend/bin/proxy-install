@@ -17,10 +17,11 @@ def install(dst)
 end
 
 if env == "production"
+  system("apt-get install unattended-upgrades")
+
   install("/etc/apt/apt.conf.d/20auto-upgrades")
   install("/etc/apt/apt.conf.d/50unattended-upgrades")
 
-  system("apt-get install unattended-upgrades")
   system("service unattended-upgrades restart")
 end
 
