@@ -23,13 +23,16 @@ server {
 
 	server_name <%= m.subdomain %>.<%= domain %>;
 
+	resolver 8.8.8.8;
+
 	location / {
 		if ($http_x_forwarded_proto = "http") {
 			return 301 https://$host:<%= Proxy.https_port %>$request_uri;
 		}
 
-		set $host_<%= i %> <%= m.url %>;
-		proxy_pass $host_<%= i %>;
+		<% var = "$host_#{i}" %>
+		set <%= var %> <%= m.url %>;
+		proxy_pass <%= var %>;
 	}
 }
 <% end %>
