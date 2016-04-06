@@ -15,7 +15,7 @@ module Proxy
       uri = URI.parse(Proxy.config.domains_endpoint)
 
       http = Net::HTTP.new(uri.host, uri.port)
-      http.use_ssl = true
+      http.use_ssl = uri.scheme == 'https'
 
       request = Net::HTTP::Get.new(uri.request_uri)
 
