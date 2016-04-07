@@ -56,17 +56,17 @@ class MappingTest < MiniTest::Test
 
   test "url escaping" do
     {
-      "https://foo:pa$$word@foo.com" => "'https://foo:pa\\$\\$word@foo.com'"
+      "https://foo:pa$$word@foo.com/" => "'https://foo:pa\\$\\$word@foo.com/'"
     }.each do |from, to|
       assert_equal Proxy::Mapping.new(["foo", from]).url, to
     end
   end
 
-  test "adds trailing slash if there is a path" do
+  test "adds trailing slas" do
     {
       "https://www.example.com/foo" => "https://www.example.com/foo/",
       "https://www.example.com/foo/" => "https://www.example.com/foo/",
-      "https://www.example.com" => "https://www.example.com",
+      "https://www.example.com" => "https://www.example.com/",
       "https://www.example.com/" => "https://www.example.com/",
     }.each do |from, to|
       assert_equal Proxy::Mapping.new(["foo", from]).original_url, to
