@@ -42,7 +42,7 @@ module Proxy
     def ensure_trailing_slash(s)
       u = URI.parse(s)
 
-      if u.path == "" || !u.path.end_with?("/")
+      if u.path != "" && !u.path.end_with?("/")
         u.path += "/"
       end
 
