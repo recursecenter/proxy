@@ -26,16 +26,20 @@ aws:
   instance_count: 2
   key_name: Zach
   security_group: proxy # Used for instances. Should have ports 22 and 443 open.
-
-  # optional
-  # syslog_drain: [TODO syslog url format]
 env:
   PROXY_ENV: production
   PROXY_DOMAIN: recurse.com
   PROXY_DOMAINS_ENDPOINT: https://www.recurse.com/api/public/domains
 
-  # optional
+  # Optional
+
+  # Apex redirects (example.com -> www.example.com)
   # PROXY_APEX_DOMAINS: example.com,example.net,example.org
+
+  # Remote logging over TLS. All three variables must be set.
+  # PROXY_SYSLOG_DRAIN: logs.papertrailapp.com:12345
+  # PROXY_SYSLOG_ROOT_CERTS: https://papertrailapp.com/tools/papertrail-bundle.pem
+  # PROXY_SYSLOG_PERMITTED_PEER: "*.papertrailapp.com"
 ```
 
 ## How Proxy works
