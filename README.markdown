@@ -43,7 +43,7 @@ Proxy itself is a few pieces of software:
 * A backend (backend/bin/proxy-backend) that is responsible for loading subdomain -> host mappings from $PROXY_DOMAINS_ENDPOINT, and reloading nginx. By default, this happens every 15 seconds.
 * Provisioning scripts (backend/bin/setup, backend/bin/proxy-install) that are responsible for configuring new EC2 instances.
 
-The ELB sits in front of the two instances, which are currently deployed in separate availability zones for redundency. The ELB loads /healthcheck on each instance to make sure that the instances are running.
+The ELB sits in front of the two instances, which are deployed in separate availability zones for redundency. The ELB loads /healthcheck on each instance to make sure that the instances are running.
 
 The ELB has two listeners: HTTP and HTTPS. Both listeners forward to HTTPS on the instances, using Backend Authentication, which consists of a self-signed certificate and associated private key, generated during the deploy process. The public key gets installed on the ELB during deploy, and the ELB only passes traffic to instances that present a certificate with the same public key.
 
