@@ -17,7 +17,7 @@ def install(dst)
 end
 
 if env == "production"
-  system("apt-get install unattended-upgrades")
+  system("apt-get install -y unattended-upgrades")
 
   install("/etc/apt/apt.conf.d/20auto-upgrades")
   install("/etc/apt/apt.conf.d/50unattended-upgrades")
@@ -54,7 +54,7 @@ if config["env"].key?("PROXY_SYSLOG_DRAIN") && config["env"].key?("PROXY_SYSLOG_
 
   root_certs = config["env"]["PROXY_SYSLOG_ROOT_CERTS"]
 
-  system("apt-get install rsyslog-gnutls")
+  system("apt-get install -y rsyslog-gnutls")
 
   puts "Downloading #{root_certs}..."
   system("curl --silent -o /etc/rsyslog-root-certs-bundle.pem #{root_certs}")
