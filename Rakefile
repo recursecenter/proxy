@@ -17,7 +17,7 @@ end
 
 desc "generate certs/cert.pem"
 file "certs/cert.pem" => ["certs/key.pem"] do
-  system("openssl req -new -key certs/key.pem -out certs/csr.pem")
+  system("openssl req -new -subj '/' -key certs/key.pem -out certs/csr.pem")
   system("openssl x509 -req -sha256 -days 1825 -in certs/csr.pem -signkey certs/key.pem -out certs/cert.pem")
   system("rm certs/csr.pem")
 end
