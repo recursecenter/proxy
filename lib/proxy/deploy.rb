@@ -90,11 +90,10 @@ module Proxy
         fail
       end
 
-      pages = @ec2.describe_instances(instance_ids: ids).to_a
-      hosts = pages.map do |page|
-        page.reservations.map do |reservation|
-          reservation.instances.map(&:public_dns_name)
-        end
+      resp = @ec2.describe_instances(instance_ids: ids)
+
+      hosts = resp.reservations.map do |reservation|
+        reservation.instances.map(&:public_dns_name)
       end.flatten
 
       ssh_opts = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
@@ -135,19 +134,26 @@ module Proxy
     def boot_new_instances
       print "Booting new instances... "
 
-      pages = @ec2.run_instances(
-        client_token: @id,
-        image_id: @ami,
-        min_count: @instance_count,
-        max_count: @instance_count,
-        key_name: @key_name,
-        security_groups: [@security_group],
-        instance_type: @instance_type
-      ).to_a
+      responses = availability_zones.cycle.take(@instance_count).map do |zone|
+        @ec2.run_instances(
+          client_token: @id,
+          image_id: @ami,
+          min_count: 1,
+          max_count: 1,
+          key_name: @key_name,
+          security_groups: [@security_group],
+          instance_type: @instance_type,
+          placement: {
+            availability_zone: zone
+          }
+        )
+      end
 
-      ids = pages.map do |page|
-        page.instances.map(&:instance_id)
+      ids = responses.map do |resp|
+        resp.instances.map(&:instance_id)
       end.flatten
+
+      @ec2.wait_until(:instance_exists, instance_ids: ids)
 
       puts "booted: #{ids.join(", ")}"
 
@@ -171,12 +177,10 @@ module Proxy
     def current_instance_ids
       print "Finding currently running instances... "
 
-      pages = @elb.describe_load_balancers({ load_balancer_names: [@elb_name] }).to_a
+      resp = @elb.describe_load_balancers({ load_balancer_names: [@elb_name] })
 
-      ids = pages.map do |page|
-        page.load_balancer_descriptions.map do |lb|
-          lb.instances.map(&:instance_id)
-        end
+      ids = resp.load_balancer_descriptions.map do |lb|
+        lb.instances.map(&:instance_id)
       end.flatten
 
       puts "found: #{ids.empty? ? "None" : ids.join(", ")}"
@@ -206,16 +210,23 @@ module Proxy
     end
 
     def kill_all_with_uuid(uuid)
-      pages = @ec2.describe_instances(filters: [{name: "tag:#{DEPLOY_TAG}", values: [uuid]}]).to_a
+      resp = @ec2.describe_instances(filters: [{name: "tag:#{DEPLOY_TAG}", values: [uuid]}])
 
-      ids = pages.map do |page|
-        page.reservations.map do |reservation|
-          reservation.instances.map(&:instance_id)
-        end
+      ids = resp.reservations.map do |reservation|
+        reservation.instances.map(&:instance_id)
       end.flatten
 
-      terminate_instances(ids)
+      unless ids.empty?
+        terminate_instances(ids)
+      end
+
       ids
+    end
+
+    def availability_zones
+      @availability_zones ||= @ec2.describe_availability_zones.to_h[:availability_zones].map do |h|
+        h[:zone_name]
+      end
     end
 
     def fail
