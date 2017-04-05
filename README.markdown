@@ -94,13 +94,6 @@ Next, create config.production.yml file in Proxy's root directory (see above for
 
 Then run `bin/proxy deploy`
 
-## TODO
-
-- TLS session resumption
-- WebSocket support (see http://nginx.com/blog/websocket-nginx/)
-- Config stored in the cloud to support multiple people deploying
-  - In event of broken conf, upload to S3 and include link in error msg
-
 ## Copyright
 
 Copyright Recurse Center 2017
