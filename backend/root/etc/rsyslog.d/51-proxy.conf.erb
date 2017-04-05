@@ -4,4 +4,20 @@ $ActionSendStreamDriverMode 1 # require TLS
 $ActionSendStreamDriverAuthMode x509/name # authenticate by hostname
 $ActionSendStreamDriverPermittedPeer <%= permitted_peer %>
 
-*.*          @@<%= syslog_drain %>
+template(name="ForwardFormatWithLogLevel" type="list") {
+    constant(value="<")
+    property(name="pri")
+    constant(value=">")
+    property(name="timestamp" dateFormat="rfc3339")
+    constant(value=" ")
+    property(name="hostname")
+    constant(value=" ")
+    property(name="syslogtag" position.from="1" position.to="32")
+    constant(value=" ")
+    property(name="syslogseverity-text" caseConversion="upper")
+    constant(value=":")
+    property(name="msg" spifno1stsp="on" )
+    property(name="msg")
+}
+
+*.*          @@<%= syslog_drain %>;ForwardFormatWithLogLevel
