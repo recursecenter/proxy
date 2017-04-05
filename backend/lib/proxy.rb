@@ -29,8 +29,7 @@ module Proxy
           nginx.reload_with_config(nginx_config)
 
         rescue => e
-          logger.error "#{e.class.name}: #{e.message}"
-          logger.error e.backtrace.join("\n")
+          log_exception(:error, e)
         end
 
         sleep(config.delay)
@@ -69,6 +68,13 @@ module Proxy
       end
 
       @logger
+    end
+
+    def log_exception(level, e)
+      logger.send(level, "#{e.class.name}: #{e.message}")
+      e.backtrace.each do |l|
+        logger.send(level, l)
+      end
     end
 
     def log_invalid_mappings(mappings)

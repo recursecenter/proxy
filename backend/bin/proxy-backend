@@ -2,14 +2,19 @@
 
 require_relative '../lib/proxy'
 
-Proxy.configure do |config|
-  config.domain = ENV["PROXY_DOMAIN"] or raise "Missing $PROXY_DOMAIN"
-  config.domains_endpoint = ENV["PROXY_DOMAINS_ENDPOINT"] or raise "Missing $PROXY_DOMAINS_ENDPOINT"
-  config.env = ENV["PROXY_ENV"] || "development"
-  config.delay = Integer(ENV["PROXY_DELAY"] || 15)
-  config.apex_domains = (ENV["PROXY_APEX_DOMAINS"] || "").strip.split(",")
+begin
+  Proxy.configure do |config|
+    config.domain = ENV["PROXY_DOMAIN"] or raise "Missing $PROXY_DOMAIN"
+    config.domains_endpoint = ENV["PROXY_DOMAINS_ENDPOINT"] or raise "Missing $PROXY_DOMAINS_ENDPOINT"
+    config.env = ENV["PROXY_ENV"] || "development"
+    config.delay = Integer(ENV["PROXY_DELAY"] || 15)
+    config.apex_domains = (ENV["PROXY_APEX_DOMAINS"] || "").strip.split(",")
+  end
+
+  Process.daemon
+
+  Proxy.run
+rescue Exception => e
+  Proxy.log_exception(:fatal, e)
+  exit 1
 end
-
-Process.daemon
-
-Proxy.run
