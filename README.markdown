@@ -63,7 +63,7 @@ The instances use Upstart to make sure the proxy-backend daemon is always runnin
 
 The code for Proxy's deploy process is located in lib/proxy/deploy.rb. This is a summary of the process:
 
-* Generate self-signed certificate and dhparams if necessary
+* Generate self-signed certificate (newly generated each deploy) and dhparams (only generated if necessary)
 * Clean up any instances from a failed half-finished deploy
 * Add public key from self-signed certificate to the ELB's list of trusted public keys
 * Boots new instances
