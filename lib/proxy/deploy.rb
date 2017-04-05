@@ -113,6 +113,8 @@ module Proxy
       <<~SHELL
         #!/bin/sh
 
+        set -e
+
         cd /
         su ubuntu
         cd ~
