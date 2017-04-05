@@ -17,7 +17,7 @@ def install(dst)
 end
 
 if env == "production"
-  system("apt-get install unattended-upgrades")
+  system("apt-get install -y unattended-upgrades")
 
   install("/etc/apt/apt.conf.d/20auto-upgrades")
   install("/etc/apt/apt.conf.d/50unattended-upgrades")
@@ -47,6 +47,31 @@ upstart_erb_path = File.expand_path("../root/etc/init/proxy.conf.erb", __dir__)
 upstart_erb = ERB.new(File.read(upstart_erb_path), nil, "<>")
 
 puts "Writing /etc/init/proxy.conf"
+
+if config["env"].key?("PROXY_SYSLOG_DRAIN") && config["env"].key?("PROXY_SYSLOG_ROOT_CERTS") && config["env"].key?("PROXY_SYSLOG_PERMITTED_PEER")
+  rsyslog_erb_path = File.expand_path("../root/etc/rsyslog.d/51-proxy.conf.erb", __dir__)
+  rsyslog_erb = ERB.new(File.read(rsyslog_erb_path), nil, "<>")
+
+  root_certs = config["env"]["PROXY_SYSLOG_ROOT_CERTS"]
+
+  system("apt-get install -y rsyslog-gnutls")
+
+  puts "Downloading #{root_certs}..."
+  system("curl --silent -o /etc/rsyslog-root-certs-bundle.pem #{root_certs}")
+
+  puts "Writing /etc/rsyslog.d/51-proxy.conf"
+
+  File.open("/etc/rsyslog.d/51-proxy.conf", "w") do |f|
+    syslog_drain = config["env"]["PROXY_SYSLOG_DRAIN"]
+    permitted_peer = config["env"]["PROXY_SYSLOG_PERMITTED_PEER"]
+
+    f.write rsyslog_erb.result(binding)
+  end
+
+  system("service rsyslog restart")
+elsif config["env"].key?("PROXY_SYSLOG_DRAIN")
+  puts "Warning: $PROXY_SYSLOG_DRAIN is set but either $PROXY_SYSLOG_ROOT_CERTS or $PROXY_SYSLOG_PERMITTED_PEER is not set. Logs will NOT be sent to $PROXY_SYSLOG_DRAIN."
+end
 
 File.open("/etc/init/proxy.conf", "w") do |f|
   vars = config["env"]

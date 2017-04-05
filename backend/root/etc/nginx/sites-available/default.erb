@@ -15,7 +15,20 @@ server {
 		return 444;
 	}
 }
-<% mappings.each_with_index do |m, i| %>
+<% apex_domains.each do |d| %>
+server {
+	listen 443;
+
+	include ssl.conf;
+
+	server_name <%= d %>;
+
+	location / {
+		return 301 https://www.<%= d %>$request_uri;
+	}
+}
+<% end %>
+<% mappings.each do |m| %>
 server {
 	listen 443;
 

@@ -3,5 +3,5 @@
 .deploy
 cache
 config.*.yml
-certs
+certs/*
 proxy-*.tar.bz2
