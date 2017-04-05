@@ -25,7 +25,8 @@ aws:
   instance_type: m3.medium
   instance_count: 2
   key_name: Zach
-  security_group: proxy # Used for instances. Should have ports 22 and 443 open.
+  security_group: proxy # Used for instances. Should have port 443 open.
+  s3_deploy_bucket: example-bucket # Used to transfer Proxy source to EC2
 env:
   PROXY_ENV: production
   PROXY_DOMAIN: recurse.com

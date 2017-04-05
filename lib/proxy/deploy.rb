@@ -3,6 +3,7 @@ require 'securerandom'
 require 'pathname'
 require 'fileutils'
 require 'yaml'
+require 'base64'
 
 module Proxy
   class Deploy
@@ -36,6 +37,9 @@ module Proxy
       @elb_name = aws_config['elb_name']
 
       @ec2 = Aws::EC2::Client.new(region: region)
+      @s3 = Aws::S3::Client.new(region: region)
+
+      @bucket = aws_config['s3_deploy_bucket']
       @security_group = aws_config['security_group']
       @ami = aws_config['ami']
       @instance_count = aws_config['instance_count']
@@ -55,9 +59,10 @@ module Proxy
       new_pubkey_policy = add_new_public_key(last_successful_deploy_id)
 
       DEPLOY_ID_FILE.write(@id)
-      instance_ids = boot_new_instances
 
-      configure_all(instance_ids)
+      create_and_upload_tar
+
+      instance_ids = boot_new_instances
 
       register_with_elb(instance_ids)
 
@@ -86,12 +91,14 @@ module Proxy
     end
 
     def register_with_elb(ids)
-      print "Registering new instances with the load balancer... "
+      puts "Adding new instances to load balancer"
 
       @elb.register_instances_with_load_balancer(
         load_balancer_name: @elb_name,
         instances: ids.map { |id| {instance_id: id} }
       )
+
+      print "Waiting for instances to be in service (this can take a few minutes)... "
 
       @elb.wait_until(
         :instance_in_service,
@@ -99,51 +106,57 @@ module Proxy
         instances: ids.map { |id| {instance_id: id} }
       )
 
-      puts "registered"
+      puts "ready"
     end
 
-    def configure_all(ids)
-      puts "Configuring new instances..."
+    def user_data_script
+      <<~SHELL
+        #!/bin/sh
 
-      unless create_tar
-        fail
-      end
+        cd /
+        su ubuntu
+        cd ~
 
-      resp = @ec2.describe_instances(instance_ids: ids)
-
-      hosts = resp.reservations.map do |reservation|
-        reservation.instances.map(&:public_dns_name)
-      end.flatten
-
-      ssh_opts = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-
-      hosts.map do |host|
-        Thread.new do
-          puts "Waiting for SSH to become available at #{host}..."
-          while !system("ssh #{ssh_opts} ubuntu@#{host} echo hi >/dev/null 2>&1"); end
-
-          system("scp #{ssh_opts} #{tar_name} ubuntu@#{host}:~") or fail
-          system("ssh #{ssh_opts} ubuntu@#{host} '#{ssh_script}'") or fail
-        end
-      end.map(&:join)
-
-      puts "Instances configured"
-    ensure
-      FileUtils.rm(tar_name)
-    end
-
-    def ssh_script
-      <<-SHELL.split("\n").map(&:strip).join(" && ")
         mkdir proxy
+        curl -o #{tar_name} "#{tar_object.presigned_url(:get, expires_in: 600)}"
         tar xjf #{tar_name} -C proxy
         $HOME/proxy/backend/bin/setup
         sudo $HOME/proxy/backend/bin/proxy-install production
       SHELL
     end
 
+    def tar_object
+      @tar_object ||= Aws::S3::Object.new(bucket_name: @bucket, key: tar_name, client: @s3)
+    end
+
+    def create_and_upload_tar
+      unless create_tar
+        fail
+      end
+
+      upload_tar
+
+    ensure
+      FileUtils.rm(tar_name)
+    end
+
     def create_tar
       files = `git ls-files`.split("\n") + REQUIRED_FILES
       system("tar cjf #{tar_name} #{files.join(' ')}")
+    end
+
+    def upload_tar
+      print "Uploading #{tar_name} to S3... "
+      File.open(tar_name, 'rb') do |f|
+        @s3.put_object(
+          bucket: @bucket,
+          key: tar_name,
+          body: f,
+        )
+      end
+
+      @s3.wait_until(:object_exists, bucket: @bucket, key: tar_name)
+      puts "done"
     end
 
     def tar_name
@@ -162,6 +175,7 @@ module Proxy
           key_name: @key_name,
           security_groups: [@security_group],
           instance_type: @instance_type,
+          user_data: Base64.encode64(user_data_script),
           placement: {
             availability_zone: zone
           }
