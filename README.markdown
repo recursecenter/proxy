@@ -57,7 +57,7 @@ The ELB sits in front of the two instances, which are deployed in separate avail
 
 The ELB has two listeners: HTTP and HTTPS. Both listeners forward to HTTPS on the instances, using Backend Authentication, which consists of a self-signed certificate and associated private key, generated during the deploy process. The public key gets installed on the ELB during deploy, and the ELB only passes traffic to instances that present a certificate with the same public key.
 
-The instances use Upstart to make sure the proxy-backend daemon is always running. Proxy-backend logs to syslog. You can set the optional syslog_drain config option to the URL for a remote syslog server, which can collect the logs from all running instances.
+The instances use Upstart to make sure the proxy-backend daemon is always running. Proxy-backend logs to syslog. You can set the optional PROXY_SYSLOG_DRAIN config option to the URL for a remote syslog server, which can collect the logs from all running instances.
 
 ## The deploy process
 
