@@ -21,7 +21,7 @@ Proxy can also optionally be the front-end for multiple apex redirects. This wil
 aws:
   elb_name: proxy-elb
   region: us-east-1
-  ami: ami-d05e75b8 # Ubuntu 14.04 for us-east-1
+  ami: ami-06b5810be11add0e2 # Ubuntu 14.04.5 for us-east-1
   instance_type: m3.medium
   instance_count: 2
   key_name: Zach
