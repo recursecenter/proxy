@@ -32,7 +32,7 @@ module Proxy
       end
 
       json.map { |from_to| Mapping.new(from_to) }.partition(&:valid?)
-    rescue JSON::ParserError => e
+    rescue JSON::ParserError
       raise ParserError, "invalid json: #{json_str}"
     end
 

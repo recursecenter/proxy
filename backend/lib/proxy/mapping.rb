@@ -25,7 +25,7 @@ module Proxy
 
       ["http", "https"].include?(uri.scheme) &&
         !original_url.include?("'")
-    rescue URI::InvalidURIError => e
+    rescue URI::InvalidURIError
       false
     end
 
@@ -47,7 +47,7 @@ module Proxy
       end
 
       u.to_s
-    rescue URI::InvalidURIError => e
+    rescue URI::InvalidURIError
       s
     end
 
