@@ -1,4 +1,4 @@
-#!/usr/bin/env ruby2.0
+#!/usr/bin/env ruby
 
 require 'yaml'
 require 'erb'
@@ -43,11 +43,6 @@ File.open("/etc/nginx/nginx.conf", "w") do |f|
 end
 
 
-upstart_erb_path = File.expand_path("../root/etc/init/proxy.conf.erb", __dir__)
-upstart_erb = ERB.new(File.read(upstart_erb_path), nil, "<>")
-
-puts "Writing /etc/init/proxy.conf"
-
 if config["env"].key?("PROXY_SYSLOG_DRAIN") && config["env"].key?("PROXY_SYSLOG_ROOT_CERTS") && config["env"].key?("PROXY_SYSLOG_PERMITTED_PEER")
   rsyslog_erb_path = File.expand_path("../root/etc/rsyslog.d/51-proxy.conf.erb", __dir__)
   rsyslog_erb = ERB.new(File.read(rsyslog_erb_path), nil, "<>")
@@ -73,7 +68,13 @@ elsif config["env"].key?("PROXY_SYSLOG_DRAIN")
   puts "Warning: $PROXY_SYSLOG_DRAIN is set but either $PROXY_SYSLOG_ROOT_CERTS or $PROXY_SYSLOG_PERMITTED_PEER is not set. Logs will NOT be sent to $PROXY_SYSLOG_DRAIN."
 end
 
-File.open("/etc/init/proxy.conf", "w") do |f|
+
+systemd_erb_path = File.expand_path("../root/etc/systemd/system/proxy.service.erb", __dir__)
+systemd_erb = ERB.new(File.read(systemd_erb_path), nil, "<>")
+
+puts "Writing /etc/systemd/system/proxy.service"
+
+File.open("/etc/systemd/system/proxy.service", "w") do |f|
   vars = config["env"]
 
   if env == 'production'
@@ -82,8 +83,7 @@ File.open("/etc/init/proxy.conf", "w") do |f|
     home_dir = '/home/vagrant'
   end
 
-  f.write upstart_erb.result(binding)
+  f.write systemd_erb.result(binding)
 end
 
-system("initctl reload-configuration")
 system("service proxy start")
