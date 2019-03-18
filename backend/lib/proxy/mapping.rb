@@ -24,7 +24,7 @@ module Proxy
       uri = URI.parse(original_url)
 
       ["http", "https"].include?(uri.scheme) &&
-        !original_url.include?("'")
+        !original_url.include?("'") && !original_url.include?(";")
     rescue URI::InvalidURIError
       false
     end
