@@ -4,7 +4,7 @@ server {
 	include ssl.conf;
 
 	location = /healthcheck {
-		return 200 "I am in good health!";
+		return 200 "I am in good health!\n";
 	}
 
 	location / {

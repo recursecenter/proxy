@@ -12,16 +12,14 @@ Vagrant.configure(2) do |config|
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://atlas.hashicorp.com/search.
-  config.vm.box = "ubuntu/trusty64"
+  config.vm.box = "ubuntu/bionic64"
 
   # Create a forwarded port mapping which allows access to a specific port
   # within the machine from a port on the host machine. In the example below,
-  # accessing "localhost:8080" will access port 80 on the guest machine.
-  config.vm.network "forwarded_port", guest: 80, host: 8080
+  # accessing "localhost:8443" will access port 443 on the guest machine.
   config.vm.network "forwarded_port", guest: 443, host: 8443
 
   config.vm.provision "shell", privileged: false, inline: <<-SHELL
-    sudo adduser vagrant adm
     ln -s /vagrant $HOME/proxy
 
     $HOME/proxy/backend/bin/setup
