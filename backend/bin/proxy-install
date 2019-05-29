@@ -86,4 +86,5 @@ File.open("/etc/systemd/system/proxy.service", "w") do |f|
   f.write systemd_erb.result(binding)
 end
 
-system("service proxy start")
+system("systemctl start proxy")
+system("systemctl enable proxy")
