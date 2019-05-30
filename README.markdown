@@ -94,6 +94,12 @@ Next, create config.production.yml file in Proxy's root directory (see above for
 
 Then run `bin/proxy deploy`
 
+## Listing instances
+
+To list instances, run `bin/proxy list`. This is useful for SSHing into the instances for debugging purposes.
+
+This command lists all instances tagged with proxy-web that are either pending, running, or shutting down. There's no guarantee that these instances are registered with the load balancer yet.
+
 ## TODO
 
 - TLS session resumption
