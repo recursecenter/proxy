@@ -41,7 +41,7 @@ server {
 			return 301 https://$host:<%= Proxy.https_port %>$request_uri;
 		}
 
-		#include /etc/nginx/proxy_params;
+		include /etc/nginx/proxy_params;
 
 		proxy_pass <%= m.url %>;
 	}
