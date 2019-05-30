@@ -24,7 +24,7 @@ aws:
   ami: ami-0a313d6098716f372 # Ubuntu 18.04.2 for us-east-1
   instance_type: m3.medium
   instance_count: 2
-  key_name: Zach
+  key_name: Zach # you must upload your public key and give it a name on the  EC2 dashboard
   security_group: proxy # Used for instances. Should have ports 22 and 443 open.
 env:
   PROXY_ENV: production
@@ -86,7 +86,7 @@ Instances are also tagged with the name "proxy-web" so you can easily see which 
 
 ## How to deploy Proxy
 
-If this is your first time deploying proxy, you'll have to create a Classic Load Balancer manually. It should be configured to forward both HTTP and HTTPS connections to HTTPS on its instances.
+If this is your first time deploying Proxy, you'll have to create a Classic Load Balancer manually. It should be configured to forward both HTTP and HTTPS connections to HTTPS on its instances.
 
 Make sure your AWS credentials are in ~/.aws/credentials. You can configure this with the aws cli: `aws configure`
 
@@ -96,9 +96,28 @@ Then run `bin/proxy deploy`
 
 ## Listing instances
 
-To list instances, run `bin/proxy list`. This is useful for SSHing into the instances for debugging purposes.
+To list instances, run `bin/proxy list`. This is useful for SSHing into the instances for debugging purposes (see below).
 
-This command lists all instances tagged with proxy-web that are either pending, running, or shutting down. There's no guarantee that these instances are registered with the load balancer yet.
+This command lists all instances tagged with proxy-web that are either pending, running, or shutting down. There's no guarantee that these instances are registered with the load balancer.
+
+## Debugging proxy
+
+If you were the person who deployed Proxy, you can SSH into the instances and poke around to see what's wrong. Here are places to look:
+
+- `systemctl status proxy`
+- `systemctl status nginx`
+- /var/log/syslog (proxy logs to syslog)
+- /var/log/nginx/{access,error}.log
+
+If you didn't deploy proxy, you won't be able to SSH in. The best you can do is deploy proxy yourself so that the instances have your SSH keys and then wait for the problem to happen again so you can debug via SSH.
+
+If you're debugging the RC proxy instance, you can access the syslog output by going to [Papertrail](https://www.papertrail.com) and logging in using hte "Papertrail (Proxy)" credentials in the RC 1Password vault.
+
+## Rebooting proxy
+
+While you can't reboot proxy, the problem might go away if you deploy it again. Make sure your SSH key is set up correctly in the EC2 section of the [AWS Console](console.aws.amazon.com), and referenced in your config.production.yml.
+
+After that, run `bin/proxy deploy`.
 
 ## TODO
 
