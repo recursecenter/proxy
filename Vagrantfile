@@ -20,7 +20,7 @@ Vagrant.configure(2) do |config|
   config.vm.network "forwarded_port", guest: 443, host: 8443
 
   config.vm.provision "shell", privileged: false, inline: <<-SHELL
-    ln -s /vagrant $HOME/proxy
+    ln -sfn /vagrant $HOME/proxy
 
     $HOME/proxy/backend/bin/setup
     sudo $HOME/proxy/backend/bin/proxy-install development
