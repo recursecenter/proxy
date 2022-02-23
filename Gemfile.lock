@@ -716,6 +716,7 @@ GEM
     thor (0.20.3)
 
 PLATFORMS
+  arm64-darwin-21
   ruby
   x86_64-darwin-19
 
@@ -725,9 +726,6 @@ DEPENDENCIES
   pry
   rake
   thor
-
-RUBY VERSION
-   ruby 2.5.1p57
 
 BUNDLED WITH
    2.2.2
