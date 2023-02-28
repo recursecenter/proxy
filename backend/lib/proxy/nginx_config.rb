@@ -4,14 +4,13 @@ require 'digest'
 
 module Proxy
   class NginxConfig
-    attr_reader :domain, :mappings, :apex_domains
+    attr_reader :domain, :mappings
 
     ERB_PATH = File.expand_path("../root/etc/nginx/sites-available/default.erb", Proxy::ROOT)
 
-    def initialize(domain, mappings, apex_domains)
+    def initialize(domain, mappings)
       @domain = domain
       @mappings = mappings.sort_by(&:subdomain)
-      @apex_domains = apex_domains
     end
 
     def contents

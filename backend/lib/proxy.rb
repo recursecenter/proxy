@@ -13,7 +13,7 @@ require_relative "proxy/nginx"
 require_relative "proxy/nginx_config"
 
 module Proxy
-  Config = Struct.new(:env, :domain, :domains_endpoint, :delay, :apex_domains)
+  Config = Struct.new(:env, :domain, :domains_endpoint, :delay)
 
   class << self
     def run
@@ -25,7 +25,7 @@ module Proxy
           valid_mappings, invalid_mappings = Proxy::Domains.fetch
           log_invalid_mappings(invalid_mappings)
 
-          nginx_config = Proxy::NginxConfig.new(config.domain, valid_mappings, config.apex_domains)
+          nginx_config = Proxy::NginxConfig.new(config.domain, valid_mappings)
           nginx.reload_with_config(nginx_config)
 
         rescue => e
