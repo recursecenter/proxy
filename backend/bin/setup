@@ -2,7 +2,7 @@
 
 set -ev
 
-sleep 10
+sleep 30
 sudo apt-get update
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nginx ruby
 sudo ln -s $HOME/proxy/backend/root/etc/nginx/ssl.conf /etc/nginx/ssl.conf
