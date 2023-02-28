@@ -4,8 +4,6 @@ Proxy is a nginx-based reverse proxy with TLS that runs on AWS. It was written t
 
 Proxy is a front-end for an unlimited number of webapps all hosted at \*.example.com. For each request, Proxy serves a wildcard TLS certificate for that domain.
 
-Proxy can also optionally be the front-end for multiple apex redirects. This will redirect all HTTP and HTTPS requests from example.com to www.example.com, example.net to www.example.net, etc. This is useful if you use Proxy on the same domain as a Heroku app living at www.example.com because Route 53, which Proxy requires, does not support ALIAS records to non-AWS infrastructure.
-
 ## Features
 
 - Nightly unattended security updates with zero downtime
@@ -13,7 +11,6 @@ Proxy can also optionally be the front-end for multiple apex redirects. This wil
 - Dynamic updating of host list from an external HTTPS endpoint
 - Secure secret storage with easy secret updating
 - Logs to a syslog server (e.g. Papertrail)
-- Redirect apex domains to www domains
 
 ## Example config.production.yml
 
@@ -32,9 +29,6 @@ env:
   PROXY_DOMAINS_ENDPOINT: https://www.example.com/domain.json
 
   # Optional
-
-  # Apex redirects (example.com -> www.example.com)
-  # PROXY_APEX_DOMAINS: example.com,example.net,example.org
 
   # Remote logging over TLS. All three variables must be set.
   # PROXY_SYSLOG_DRAIN: logs.papertrailapp.com:12345
