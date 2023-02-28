@@ -15,13 +15,15 @@ server {
 		return 444;
 	}
 }
-<% mappings.each do |m| %>
+<% mappings.each_with_index do |m, i| %>
 server {
 	listen 443;
 
 	include ssl.conf;
 
 	server_name <%= m.subdomain %>.<%= domain %>;
+
+	resolver 127.0.0.53;
 
 	location / {
 		if ($http_x_forwarded_proto = "http") {
@@ -30,7 +32,8 @@ server {
 
 		include /etc/nginx/proxy_params;
 
-		proxy_pass <%= m.url %>;
+		set <%= "$host_#{i}" %> <%= m.url %>;
+		proxy_pass <%= "$host_#{i}" %>;
 	}
 }
 <% end %>
