@@ -2,12 +2,12 @@ require 'aws-sdk'
 
 module Proxy
   class List
-    CONFIG_FILE = "config.production.yml"
-
-    def initialize
-      aws_config = YAML.load(File.read(CONFIG_FILE))['aws']
+    def initialize(env)
+      @env = env
+      aws_config = YAML.load(File.read(config_file))['aws']
 
       region = aws_config['region']
+      @tag = aws_config['tag']
 
       # Assumes credentials in ENV or ~/.aws/credentials
       @ec2 = Aws::EC2::Client.new(region: region)
@@ -18,7 +18,7 @@ module Proxy
         filters: [
           {
             name: "tag:Name",
-            values: ["proxy-web"]
+            values: [@tag]
           },
           {
             name: "instance-state-name",
@@ -32,6 +32,10 @@ module Proxy
       instances.each do |i|
         puts "#{i[:public_dns_name]} - #{i[:state][:name]}"
       end
+    end
+
+    def config_file
+      "config.#{@env}.yml"
     end
   end
 end

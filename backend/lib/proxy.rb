@@ -44,15 +44,15 @@ module Proxy
       yield config
     end
 
-    def production?
-      config.env == "production"
+    def development?
+      config.env == "development"
     end
 
     def https_port
-      if production?
-        443
-      else
+      if development?
         8443
+      else
+        443
       end
     end
 
@@ -61,10 +61,10 @@ module Proxy
 
       @logger = Syslog::Logger.new("proxy")
 
-      if production?
-        @logger.level = Logger::INFO
-      else
+      if development?
         @logger.level = Logger::DEBUG
+      else
+        @logger.level = Logger::INFO
       end
 
       @logger
