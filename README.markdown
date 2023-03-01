@@ -17,6 +17,7 @@ Proxy is a front-end for an unlimited number of webapps all hosted at \*.example
 ```yml
 aws:
   elb_name: proxy-elb
+  tag: proxy-web
   region: us-east-1
   ami: ami-0a313d6098716f372 # Ubuntu 18.04.2 for us-east-1
   instance_type: m3.medium
@@ -24,8 +25,28 @@ aws:
   key_name: Dave # you must upload your public key and give it a name on the EC2 dashboard
   security_group: proxy # Used for instances. Should have ports 22 and 443 open.
 env:
-  PROXY_ENV: production
   PROXY_DOMAIN: recurse.com
+  PROXY_HTTPS_PORT: 443
+  PROXY_LOG_LEVEL: info
+  PROXY_DOMAINS_ENDPOINT: https://www.example.com/domain.json
+
+  # Optional
+
+  # Remote logging over TLS. All three variables must be set.
+  # PROXY_SYSLOG_DRAIN: logs.papertrailapp.com:12345
+  # PROXY_SYSLOG_ROOT_CERTS: https://papertrailapp.com/tools/papertrail-bundle.pem
+  # PROXY_SYSLOG_PERMITTED_PEER: "*.papertrailapp.com"
+```
+
+## Example config.development.yml
+
+The development config doesn't contain the AWS section.
+
+```yml
+env:
+  PROXY_DOMAIN: recurse.com
+  PROXY_HTTPS_PORT: 8443
+  PROXY_LOG_LEVEL: debug
   PROXY_DOMAINS_ENDPOINT: https://www.example.com/domain.json
 
   # Optional
