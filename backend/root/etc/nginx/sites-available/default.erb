@@ -15,7 +15,7 @@ server {
 		return 444;
 	}
 }
-<% mappings.each_with_index do |m, i| %>
+<% mappings.each do |m| %>
 server {
 	listen 443;
 
@@ -32,8 +32,8 @@ server {
 
 		include /etc/nginx/proxy_params;
 
-		set <%= "$host_#{i}" %> <%= m.url %>;
-		proxy_pass <%= "$host_#{i}" %>;
+		set $redirect_host <%= m.url %>;
+		proxy_pass $redirect_host$request_uri;
 	}
 }
 <% end %>
