@@ -2,6 +2,10 @@ require 'aws-sdk'
 
 module Proxy
   class List
+    def self.list_instances(env)
+      new(env).list_instances
+    end
+
     def initialize(env)
       @env = env
       aws_config = YAML.load(File.read(config_file))['aws']
@@ -14,6 +18,8 @@ module Proxy
     end
 
     def list_instances
+      puts "Listing #{@env}..."
+
       resp = @ec2.describe_instances(
         filters: [
           {

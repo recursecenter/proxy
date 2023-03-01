@@ -16,6 +16,10 @@ module Proxy
     AUTH_POLICY_TYPE = "BackendServerAuthenticationPolicyType"
     PUBKEY_POLICY_TYPE = "PublicKeyPolicyType"
 
+    def self.deploy(env)
+      new(env).deploy
+    end
+
     def initialize(env)
       @env = env
 
@@ -39,6 +43,8 @@ module Proxy
     end
 
     def deploy
+      puts "Deploying #{@env}..."
+
       ensure_necessary_files
       clean_up_if_necessary
 
