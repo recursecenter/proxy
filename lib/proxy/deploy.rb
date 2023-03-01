@@ -9,7 +9,6 @@ module Proxy
     DEPLOY_ID_FILE = Pathname.new("./.deploy")
     DEPLOY_TAG = "proxy_deploy_id"
     INSTANCE_NAME_TAG = "Name"
-    CONFIG_FILE = "config.production.yml"
     DHPARAM_FILE = "certs/dhparam.pem"
     CERT_FILE = "certs/cert.pem"
     KEY_FILE = "certs/key.pem"
@@ -17,23 +16,23 @@ module Proxy
     AUTH_POLICY_TYPE = "BackendServerAuthenticationPolicyType"
     PUBKEY_POLICY_TYPE = "PublicKeyPolicyType"
 
-    REQUIRED_FILES = [
-      CONFIG_FILE,
-      DHPARAM_FILE,
-      CERT_FILE,
-      KEY_FILE
-    ]
+    def self.deploy(env)
+      new(env).deploy
+    end
 
-    def initialize
+    def initialize(env)
+      @env = env
+
       @id = SecureRandom.uuid
 
-      aws_config = YAML.load(File.read(CONFIG_FILE))['aws']
+      aws_config = YAML.load(File.read(config_file))['aws']
 
       region = aws_config['region']
 
       # Assumes credentials in ENV or ~/.aws/credentials
       @elb = Aws::ElasticLoadBalancing::Client.new(region: region)
       @elb_name = aws_config['elb_name']
+      @tag = aws_config['tag']
 
       @ec2 = Aws::EC2::Client.new(region: region)
       @security_group = aws_config['security_group']
@@ -44,6 +43,8 @@ module Proxy
     end
 
     def deploy
+      puts "Deploying #{@env}..."
+
       ensure_necessary_files
       clean_up_if_necessary
 
@@ -137,12 +138,12 @@ module Proxy
         mkdir proxy
         tar xjf #{tar_name} -C proxy
         $HOME/proxy/backend/bin/setup
-        sudo $HOME/proxy/backend/bin/proxy-install production
+        sudo $HOME/proxy/backend/bin/proxy-install #{@env}
       SHELL
     end
 
     def create_tar
-      files = `git ls-files`.split("\n") + REQUIRED_FILES
+      files = `git ls-files`.split("\n") + required_files
       system("tar cjf #{tar_name} #{files.join(' ')}")
     end
 
@@ -180,7 +181,7 @@ module Proxy
         resources: ids,
         tags: [
           {key: DEPLOY_TAG, value: @id},
-          {key: INSTANCE_NAME_TAG, value: "proxy-web"}
+          {key: INSTANCE_NAME_TAG, value: @tag}
         ]
       )
 
@@ -208,8 +209,8 @@ module Proxy
     end
 
     def ensure_necessary_files
-      unless File.exist? CONFIG_FILE
-        puts "Cannot deploy. Missing: #{CONFIG_FILE}"
+      unless File.exist? config_file
+        puts "Cannot deploy. Missing: #{config_file}"
         fail
       end
 
@@ -405,6 +406,19 @@ module Proxy
       puts "Deploy failed!"
       Process.kill(:TERM, 0)
       exit 1
+    end
+
+    def config_file
+      "config.#{@env}.yml"
+    end
+
+    def required_files
+      [
+        config_file,
+        DHPARAM_FILE,
+        CERT_FILE,
+        KEY_FILE
+      ]
     end
   end
 end

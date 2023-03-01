@@ -23,6 +23,8 @@ server {
 
 	server_name <%= m.subdomain %>.<%= domain %>;
 
+	resolver 127.0.0.53;
+
 	location / {
 		if ($http_x_forwarded_proto = "http") {
 			return 301 https://$host:<%= Proxy.https_port %>$request_uri;
@@ -30,7 +32,8 @@ server {
 
 		include /etc/nginx/proxy_params;
 
-		proxy_pass <%= m.url %>;
+		set $redirect_host <%= m.url %>;
+		proxy_pass $redirect_host$request_uri;
 	}
 }
 <% end %>

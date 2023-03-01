@@ -16,7 +16,7 @@ def install(dst)
   FileUtils.cp(src, dst)
 end
 
-if env == "production"
+if env != "development"
   system("apt-get install -y unattended-upgrades")
 
   install("/etc/apt/apt.conf.d/20auto-upgrades")
@@ -77,10 +77,10 @@ puts "Writing /etc/systemd/system/proxy.service"
 File.open("/etc/systemd/system/proxy.service", "w") do |f|
   vars = config["env"]
 
-  if env == 'production'
-    home_dir = '/home/ubuntu'
-  else
+  if env == 'development'
     home_dir = '/home/vagrant'
+  else
+    home_dir = '/home/ubuntu'
   end
 
   f.write systemd_erb.result(binding)

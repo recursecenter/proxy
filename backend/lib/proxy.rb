@@ -13,7 +13,7 @@ require_relative "proxy/nginx"
 require_relative "proxy/nginx_config"
 
 module Proxy
-  Config = Struct.new(:env, :domain, :domains_endpoint, :delay)
+  Config = Struct.new(:domain, :https_port, :log_level, :domains_endpoint, :delay)
 
   class << self
     def run
@@ -44,28 +44,15 @@ module Proxy
       yield config
     end
 
-    def production?
-      config.env == "production"
-    end
-
     def https_port
-      if production?
-        443
-      else
-        8443
-      end
+      config.https_port
     end
 
     def logger
       return @logger if defined?(@logger)
 
       @logger = Syslog::Logger.new("proxy")
-
-      if production?
-        @logger.level = Logger::INFO
-      else
-        @logger.level = Logger::DEBUG
-      end
+      @logger.level = Logger.const_get(config.log_level.upcase)
 
       @logger
     end
