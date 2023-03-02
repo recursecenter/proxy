@@ -84,9 +84,6 @@ func fetchDomains(ctx context.Context, url string) (map[string]string, error) {
 }
 
 func proxy(w http.ResponseWriter, r *http.Request, mapping *syncMap, domain string) {
-	// TODO: make sure r.Host is set? Does it return an empty string if it's not?
-
-	// TODO: what happens if you split "" on "."? Does it return []string{""} or []string{}?
 	subdomain := strings.Split(r.Host, ".")[0]
 
 	// If domain is example.com, then we want to proxy requests to
