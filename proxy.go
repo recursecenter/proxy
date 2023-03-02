@@ -38,7 +38,7 @@ func (sm *syncMap) lookup(key string) (string, bool) {
 	return s, ok
 }
 
-func (sm *syncMap) set(m map[string]string) {
+func (sm *syncMap) replace(m map[string]string) {
 	sm.mutex.Lock()
 	defer sm.mutex.Unlock()
 
@@ -227,7 +227,7 @@ func main() {
 					continue
 				}
 
-				mapping.set(m)
+				mapping.replace(m)
 			}
 		}
 	})
