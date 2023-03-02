@@ -1,7 +1,3 @@
-.bundle
-.vagrant
-.deploy
-cache
 config.*.yml
-certs/*
-proxy-*.tar.bz2
+.env
+__debug_bin
