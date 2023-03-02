@@ -91,13 +91,15 @@ func proxy(w http.ResponseWriter, r *http.Request, mapping *syncMap, domain stri
 	// If domain is example.com, then we want to proxy requests to
 	// foo.example.com, but not foo.bar.example.com.
 	if host != subdomain+"."+domain {
-		// 502 bad gateway
+		log.Printf("error: invalid host header: %q must be a direct subdomain of %q", host, domain)
 		w.WriteHeader(http.StatusBadGateway)
+		w.Write([]byte("502 bad gateway\n"))
 		return
 	}
 
 	target, ok := mapping.lookup(subdomain)
 	if !ok {
+		log.Printf("error: unknown subdomain: %s", subdomain)
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("404 not found\n"))
 		return
@@ -105,8 +107,9 @@ func proxy(w http.ResponseWriter, r *http.Request, mapping *syncMap, domain stri
 
 	u, err := url.Parse(target)
 	if err != nil {
-		// 502 bad gateway
+		log.Printf("error: invalid url: %v", err)
 		w.WriteHeader(http.StatusBadGateway)
+		w.Write([]byte("502 bad gateway\n"))
 		return
 	}
 
@@ -143,8 +146,7 @@ func proxy(w http.ResponseWriter, r *http.Request, mapping *syncMap, domain stri
 func mustGetenv(key string) string {
 	value, ok := os.LookupEnv(key)
 	if !ok {
-		fmt.Printf("error: %s not set\n", key)
-		os.Exit(1)
+		log.Fatalf("error: %s not set\n", key)
 	}
 
 	return value
@@ -172,16 +174,14 @@ func loadConfig() (domain, endpoint string, refreshInterval, shutdownTimeout tim
 
 	i, err := getenvInt("PROXY_REFRESH_INTERVAL", 5)
 	if err != nil {
-		fmt.Printf("error: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("error: %v\n", err)
 	}
 
 	refreshInterval = time.Duration(i) * time.Second
 
 	i, err = getenvInt("PROXY_SHUTDOWN_TIMEOUT", 10)
 	if err != nil {
-		fmt.Printf("error: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("error: %v\n", err)
 	}
 
 	shutdownTimeout = time.Duration(i) * time.Second
@@ -190,7 +190,7 @@ func loadConfig() (domain, endpoint string, refreshInterval, shutdownTimeout tim
 }
 
 func main() {
-	log.Println("Proxy started")
+	log.Printf("Proxy starting...")
 
 	// Only fails if the file fails to parse, not if it doesn't exist.
 	if err := dotenv.Load(); err != nil {
@@ -198,6 +198,11 @@ func main() {
 	}
 
 	domain, endpoint, refreshInterval, shutdownTimeout := loadConfig()
+
+	log.Printf("* refresh interval: %s\n", refreshInterval)
+	log.Printf("* shutdown timeout: %s\n", shutdownTimeout)
+	log.Printf("*         endpoint: %s\n", endpoint)
+	log.Printf("*           domain: %s\n", domain)
 
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	g, ctx := errgroup.WithContext(ctx)
