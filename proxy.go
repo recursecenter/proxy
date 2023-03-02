@@ -137,6 +137,7 @@ func proxy(w http.ResponseWriter, r *http.Request, mapping *syncMap, domain stri
 			req.Out.URL.RawQuery = req.In.URL.RawQuery
 		},
 		ModifyResponse: func(resp *http.Response) error {
+			resp.Header.Set("Server", "Proxy/2.0")
 			log.Printf("[%s] %s %s -> %s; %s", r.Host, r.Method, r.URL, resp.Request.URL, resp.Status)
 			return nil
 		},
