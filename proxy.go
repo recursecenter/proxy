@@ -155,6 +155,15 @@ func mustGetenv(key string) string {
 	return value
 }
 
+func getenv(key, fallback string) string {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		return fallback
+	}
+
+	return value
+}
+
 func getenvInt(key string, fallback int) (int, error) {
 	value, ok := os.LookupEnv(key)
 	if !ok {
@@ -172,7 +181,7 @@ func getenvInt(key string, fallback int) (int, error) {
 }
 
 func loadConfig() (addr, domain, endpoint string, refreshInterval, shutdownTimeout time.Duration) {
-	addr = ":" + mustGetenv("PORT")
+	addr = ":" + getenv("PORT", "80")
 	domain = mustGetenv("PROXY_DOMAIN")
 	endpoint = mustGetenv("PROXY_ENDPOINT")
 
@@ -198,7 +207,7 @@ func main() {
 
 	// Only fails if the file fails to parse, not if it doesn't exist.
 	if err := dotenv.Load(); err != nil {
-		log.Fatalf("error reading .env: %v", err)
+		log.Fatalf("error: can't reading .env: %v", err)
 	}
 
 	addr, domain, endpoint, refreshInterval, shutdownTimeout := loadConfig()
@@ -230,7 +239,7 @@ func main() {
 			case <-time.After(refreshInterval):
 				m, err := fetchDomains(ctx, endpoint)
 				if err != nil {
-					log.Printf("error fetching domains: %v", err)
+					log.Printf("error: couldn't fetching domains: %v", err)
 					continue
 				}
 
