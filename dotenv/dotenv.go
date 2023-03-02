@@ -59,6 +59,8 @@ func parse(s string) (map[string]string, error) {
 func Load() error {
 	data, err := os.ReadFile(".env")
 	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	} else if err != nil {
 		return err
 	}
 
