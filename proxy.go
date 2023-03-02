@@ -85,31 +85,30 @@ func fetchDomains(ctx context.Context, url string) (map[string]string, error) {
 }
 
 func proxy(w http.ResponseWriter, r *http.Request, mapping *syncMap, domain string) {
-	host := r.Host
-	subdomain := strings.Split(host, ".")[0]
+	subdomain := strings.Split(r.Host, ".")[0]
 
 	// If domain is example.com, then we want to proxy requests to
 	// foo.example.com, but not foo.bar.example.com.
-	if host != subdomain+"."+domain {
-		log.Printf("error: invalid host header: %q must be a direct subdomain of %q", host, domain)
+	if r.Host != subdomain+"."+domain {
+		log.Printf("[%s] %s %s; error: invalid host: %q must be a subdomain of %q", r.Host, r.Method, r.URL, r.Host, domain)
 		w.WriteHeader(http.StatusBadGateway)
-		w.Write([]byte("502 bad gateway\n"))
+		w.Write([]byte("502 Bad Gateway\n"))
 		return
 	}
 
 	target, ok := mapping.lookup(subdomain)
 	if !ok {
-		log.Printf("error: unknown subdomain: %s", subdomain)
+		log.Printf("[%s] %s %s; error: unknown host: %s", r.Host, r.Method, r.URL, r.Host)
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("404 not found\n"))
+		w.Write([]byte("404 Not Found\n"))
 		return
 	}
 
 	u, err := url.Parse(target)
 	if err != nil {
-		log.Printf("error: invalid url: %v", err)
+		log.Printf("[%s] %s %s; error: invalid url: %v", r.Host, r.Method, r.URL, err)
 		w.WriteHeader(http.StatusBadGateway)
-		w.Write([]byte("502 bad gateway\n"))
+		w.Write([]byte("502 Bad Gateway\n"))
 		return
 	}
 
@@ -138,6 +137,10 @@ func proxy(w http.ResponseWriter, r *http.Request, mapping *syncMap, domain stri
 			// believe it applies to our usecase.
 			req.Out.URL.RawQuery = req.In.URL.RawQuery
 		},
+		ModifyResponse: func(resp *http.Response) error {
+			log.Printf("[%s] %s %s -> %s; %s", r.Host, r.Method, r.URL, resp.Request.URL, resp.Status)
+			return nil
+		},
 	}
 
 	proxy.ServeHTTP(w, r)
@@ -146,7 +149,7 @@ func proxy(w http.ResponseWriter, r *http.Request, mapping *syncMap, domain stri
 func mustGetenv(key string) string {
 	value, ok := os.LookupEnv(key)
 	if !ok {
-		log.Fatalf("error: %s not set\n", key)
+		log.Fatalf("error: %s not set", key)
 	}
 
 	return value
@@ -174,14 +177,14 @@ func loadConfig() (domain, endpoint string, refreshInterval, shutdownTimeout tim
 
 	i, err := getenvInt("PROXY_REFRESH_INTERVAL", 5)
 	if err != nil {
-		log.Fatalf("error: %v\n", err)
+		log.Fatalf("error: %v", err)
 	}
 
 	refreshInterval = time.Duration(i) * time.Second
 
 	i, err = getenvInt("PROXY_SHUTDOWN_TIMEOUT", 10)
 	if err != nil {
-		log.Fatalf("error: %v\n", err)
+		log.Fatalf("error: %v", err)
 	}
 
 	shutdownTimeout = time.Duration(i) * time.Second
@@ -194,15 +197,15 @@ func main() {
 
 	// Only fails if the file fails to parse, not if it doesn't exist.
 	if err := dotenv.Load(); err != nil {
-		log.Fatalf("error reading .env: %v\n", err)
+		log.Fatalf("error reading .env: %v", err)
 	}
 
 	domain, endpoint, refreshInterval, shutdownTimeout := loadConfig()
 
-	log.Printf("* refresh interval: %s\n", refreshInterval)
-	log.Printf("* shutdown timeout: %s\n", shutdownTimeout)
-	log.Printf("*         endpoint: %s\n", endpoint)
-	log.Printf("*           domain: %s\n", domain)
+	log.Printf("* refresh interval: %s", refreshInterval)
+	log.Printf("* shutdown timeout: %s", shutdownTimeout)
+	log.Printf("*         endpoint: %s", endpoint)
+	log.Printf("*           domain: %s", domain)
 
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	g, ctx := errgroup.WithContext(ctx)
@@ -223,7 +226,7 @@ func main() {
 			case <-time.After(refreshInterval):
 				m, err := fetchDomains(ctx, endpoint)
 				if err != nil {
-					log.Printf("error fetching domains: %v\n", err)
+					log.Printf("error fetching domains: %v", err)
 					continue
 				}
 
@@ -254,7 +257,7 @@ func main() {
 	})
 
 	if err := g.Wait(); err != nil {
-		log.Fatalf("error: %v\n", err)
+		log.Fatalf("error: %v", err)
 	}
 
 	log.Println("Proxy stopped")
