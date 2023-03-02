@@ -213,8 +213,8 @@ func main() {
 	addr, domain, endpoint, refreshInterval, shutdownTimeout := loadConfig()
 	log.Printf("* refresh interval: %s", refreshInterval)
 	log.Printf("* shutdown timeout: %s", shutdownTimeout)
-	log.Printf("*         endpoint: %s", endpoint)
 	log.Printf("*           domain: %s", domain)
+	log.Printf("*         endpoint: %s", endpoint)
 	log.Println()
 	log.Printf("Listening on %s", addr)
 
