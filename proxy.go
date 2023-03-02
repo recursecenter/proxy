@@ -134,8 +134,8 @@ func proxy(w http.ResponseWriter, r *http.Request, mapping *syncMap, domain stri
 			//
 			// We don't interpret query parameters at all, so let's just pass them
 			// on umodified for maximum compatibility. This is the security issue:
-			// https://www.oxeye.io/blog/golang-parameter-smuggling-attack
-			// I don't believe it applies to our usecase.
+			// https://www.oxeye.io/blog/golang-parameter-smuggling-attack. I don't
+			// believe it applies to our usecase.
 			req.Out.URL.RawQuery = req.In.URL.RawQuery
 		},
 	}
