@@ -220,14 +220,18 @@ func main() {
 
 	mapping := &syncMap{}
 
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		proxy(w, r, mapping, domain)
+	})
+
 	server := &http.Server{
 		Addr:         addr,
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
+		Handler:      mux,
 	}
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		proxy(w, r, mapping, domain)
-	})
 
 	// Fetch the domain every refereshInterval
 	g.Go(func() error {
