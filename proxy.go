@@ -194,7 +194,7 @@ func main() {
 
 	// Only fails if the file fails to parse, not if it doesn't exist.
 	if err := dotenv.Load(); err != nil {
-		log.Fatalf("error: %v\n", err)
+		log.Fatalf("error reading .env: %v\n", err)
 	}
 
 	domain, endpoint, refreshInterval, shutdownTimeout := loadConfig()

@@ -1,268 +1,73 @@
 package dotenv
 
 import (
-	"bufio"
+	"errors"
 	"fmt"
-	"io"
+	"io/fs"
 	"os"
-	"unicode"
+	"regexp"
+	"strings"
 )
 
-type scanner struct {
-	io.RuneScanner
-	comment bool
-}
+var (
+	lineRe = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)=(\S.*)$`)
 
-func (s *scanner) readSpace() (bool, error) {
-	r, _, err := s.ReadRune()
-	if err != nil {
-		return false, err
-	}
+	// bare value (no white space) followed by optional whitespace and comment
+	bareRe = regexp.MustCompile(`^(\S+)\s*(:?#.*)?$`)
 
-	if s.comment && (r == '\n' || r == '\r') {
-		s.comment = false
-		return true, nil
-	} else if s.comment {
-		return true, nil
-	} else if r == '#' {
-		s.comment = true
-		return true, nil
-	} else if unicode.IsSpace(r) {
-		return true, nil
-	} else if err := s.UnreadRune(); err != nil {
-		return false, err
-	} else {
-		return false, nil
-	}
-}
+	// quoted strings followed by optional whitespace and comment
+	singleRe = regexp.MustCompile(`^'([^']*)'\s*(:?#.*)?$`)
+	doubleRe = regexp.MustCompile(`^"([^"]*)"\s*(:?#.*)?$`)
+)
 
-func (s *scanner) readAllSpace() error {
-	for {
-		skip, err := s.readSpace()
-		if err != nil {
-			return err
-		}
+func parse(s string) (map[string]string, error) {
+	env := make(map[string]string)
 
-		if !skip {
-			return nil
-		}
-	}
-}
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	s = strings.ReplaceAll(s, "\r", "\n")
 
-func (s *scanner) expect(r rune) error {
-	r2, _, err := s.ReadRune()
-	if err != nil {
-		return err
-	}
-
-	if r2 != r {
-		return fmt.Errorf("expected %q, got %q", r, r2)
-	}
-
-	return nil
-}
-
-func (s *scanner) readLetter() (rune, bool, error) {
-	r, _, err := s.ReadRune()
-	if err != nil {
-		return 0, false, err
-	}
-
-	if unicode.IsLetter(r) {
-		return r, true, nil
-	}
-
-	if err := s.UnreadRune(); err != nil {
-		return 0, false, err
-	}
-
-	return r, false, nil
-}
-
-func (s *scanner) expectLetter() (rune, error) {
-	r, ok, err := s.readLetter()
-	if err != nil {
-		return 0, err
-	}
-
-	if !ok {
-		return 0, fmt.Errorf("expected letter, got %q", r)
-	}
-
-	return r, nil
-}
-
-func (s *scanner) readNameRune() (rune, bool, error) {
-	r, _, err := s.ReadRune()
-	if err != nil {
-		return 0, false, err
-	}
-
-	if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' {
-		return r, true, nil
-	}
-
-	if err := s.UnreadRune(); err != nil {
-		return 0, false, err
-	}
-
-	return r, false, nil
-}
-
-func (s *scanner) readName() (string, error) {
-	var runes []rune
-
-	r, err := s.expectLetter()
-	if err != nil {
-		return "", err
-	}
-
-	runes = append(runes, r)
-
-	for {
-		r, ok, err := s.readNameRune()
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return "", err
-		}
-
-		if !ok {
-			break
-		}
-
-		runes = append(runes, r)
-	}
-
-	return string(runes), nil
-}
-
-func (s *scanner) readLineWithDelim(delim rune) (string, error) {
-	var runes []rune
-
-	for {
-		r, _, err := s.ReadRune()
-		if err == io.EOF {
-			return "", fmt.Errorf("unexpected EOF")
-		} else if err != nil {
-			return "", err
-		}
-
-		if r == '\n' {
-			return "", fmt.Errorf("unexpected newline")
-		} else if r == '\r' {
-			return "", fmt.Errorf("unexpected carriage return")
-		} else if r == delim {
-			break
-		}
-
-		runes = append(runes, r)
-	}
-
-	return string(runes), nil
-}
-
-func (s *scanner) readValue() (string, error) {
-	r, _, err := s.ReadRune()
-	if err != nil {
-		return "", err
-	}
-
-	if r == '"' || r == '\'' {
-		return s.readLineWithDelim(r)
-	}
-
-	var runes []rune
-	runes = append(runes, r)
-
-	for {
-		r, _, err := s.ReadRune()
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return "", err
-		}
-
-		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' {
-			runes = append(runes, r)
+	for _, line := range strings.Split(s, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || line[0] == '#' {
 			continue
 		}
 
-		if err := s.UnreadRune(); err != nil {
-			return "", err
+		m := lineRe.FindStringSubmatch(line)
+		if m == nil {
+			return nil, fmt.Errorf("invalid line: %q", line)
 		}
 
-		break
-	}
+		name := m[1]
+		value := m[2]
 
-	return string(runes), nil
-}
-
-func parse(r io.Reader) (map[string]string, error) {
-	env := make(map[string]string)
-	s := &scanner{RuneScanner: bufio.NewReader(r)}
-
-	err := s.readAllSpace()
-	if err == io.EOF {
-		return env, nil
-	} else if err != nil {
-		return nil, err
-	}
-
-	for {
-		name, err := s.readName()
-		if err != nil {
-			return nil, err
-		}
-
-		err = s.expect('=')
-		if err != nil {
-			return nil, err
-		}
-
-		value, err := s.readValue()
-		if err != nil {
-			return nil, err
+		if m := singleRe.FindStringSubmatch(value); m != nil {
+			value = m[1]
+		} else if m := doubleRe.FindStringSubmatch(value); m != nil {
+			value = m[1]
+		} else if m := bareRe.FindStringSubmatch(value); m != nil {
+			value = m[1]
+		} else {
+			return nil, fmt.Errorf("invalid line: %q", line)
 		}
 
 		env[name] = value
-
-		err = s.readAllSpace()
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return nil, err
-		}
 	}
 
 	return env, nil
 }
 
 func Load() error {
-	stat, err := os.Stat(".env")
-	if err != nil && os.IsNotExist(err) {
-		return nil
-	} else if err != nil {
+	data, err := os.ReadFile(".env")
+	if errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
 
-	if !stat.Mode().IsRegular() {
-		return fmt.Errorf("not a regular file: .env")
-	}
-
-	f, err := os.Open(".env")
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	env, err := parse(f)
+	env, err := parse(string(data))
 	if err != nil {
 		return err
 	}
 
 	for key, value := range env {
-		fmt.Printf("! %s=%s\n", key, value)
 		if err := os.Setenv(key, value); err != nil {
 			return err
 		}
