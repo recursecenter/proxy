@@ -1,4 +1,4 @@
-package dotenv
+package main
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 func TestSimple(t *testing.T) {
 	s := "FOO=bar"
 
-	env, err := parse(s)
+	env, err := parseDotenv(s)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,7 +24,7 @@ func TestSimple(t *testing.T) {
 func TestMulti(t *testing.T) {
 	s := "FOO=bar\nBAZ=qux"
 
-	env, err := parse(s)
+	env, err := parseDotenv(s)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestMulti(t *testing.T) {
 func TestEmpty(t *testing.T) {
 	s := ""
 
-	env, err := parse(s)
+	env, err := parseDotenv(s)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestEmpty(t *testing.T) {
 func TestWhiteSpace(t *testing.T) {
 	s := "  \n FOO=bar   \n"
 
-	env, err := parse(s)
+	env, err := parseDotenv(s)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestWhiteSpace(t *testing.T) {
 func TestQuote(t *testing.T) {
 	s := "ONE='two \" three'  \n  FOUR=\"five ' six\""
 
-	env, err := parse(s)
+	env, err := parseDotenv(s)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestQuote(t *testing.T) {
 func TestComment(t *testing.T) {
 	s := "# FOO=bar"
 
-	env, err := parse(s)
+	env, err := parseDotenv(s)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func TestComment(t *testing.T) {
 
 	s = "FOO=bar # set FOO to bar"
 
-	env, err = parse(s)
+	env, err = parseDotenv(s)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func TestComment(t *testing.T) {
 
 	s = "FOO=bar # set FOO to bar\nBAZ=qux\n"
 
-	env, err = parse(s)
+	env, err = parseDotenv(s)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,31 +139,31 @@ func TestComment(t *testing.T) {
 func TestBad(t *testing.T) {
 	s := "FOO"
 
-	_, err := parse(s)
+	_, err := parseDotenv(s)
 	if err == nil {
 		t.Fatal("expected error")
 	}
 
 	s = "FOO=bar\nBAZ"
-	_, err = parse(s)
+	_, err = parseDotenv(s)
 	if err == nil {
 		t.Fatal("expected error")
 	}
 
 	s = "1FOO=bar"
-	_, err = parse(s)
+	_, err = parseDotenv(s)
 	if err == nil {
 		t.Fatal("expected error")
 	}
 
 	s = "FOO=bar baz\nBAZ=qux"
-	_, err = parse(s)
+	_, err = parseDotenv(s)
 	if err == nil {
 		t.Fatal("expected error")
 	}
 
 	s = "FOO BAR=baz qux"
-	_, err = parse(s)
+	_, err = parseDotenv(s)
 	if err == nil {
 		t.Fatal("expected error")
 	}

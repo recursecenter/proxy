@@ -17,7 +17,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/recursecenter/proxy/dotenv"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -206,7 +205,7 @@ func main() {
 	log.Printf("Proxy starting...")
 
 	// Only fails if the file fails to parse, not if it doesn't exist.
-	if err := dotenv.Load(); err != nil {
+	if err := loadDotenv(); err != nil {
 		log.Fatalf("error: can't reading .env: %v", err)
 	}
 

@@ -1,4 +1,4 @@
-package dotenv
+package main
 
 import (
 	"errors"
@@ -20,7 +20,7 @@ var (
 	doubleRe = regexp.MustCompile(`^"([^"]*)"\s*(:?#.*)?$`)
 )
 
-func parse(s string) (map[string]string, error) {
+func parseDotenv(s string) (map[string]string, error) {
 	env := make(map[string]string)
 
 	s = strings.ReplaceAll(s, "\r\n", "\n")
@@ -56,7 +56,7 @@ func parse(s string) (map[string]string, error) {
 	return env, nil
 }
 
-func Load() error {
+func loadDotenv() error {
 	data, err := os.ReadFile(".env")
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
@@ -64,7 +64,7 @@ func Load() error {
 		return err
 	}
 
-	env, err := parse(string(data))
+	env, err := parseDotenv(string(data))
 	if err != nil {
 		return err
 	}
