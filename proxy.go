@@ -171,7 +171,8 @@ func getenvInt(key string, fallback int) (int, error) {
 	return i, nil
 }
 
-func loadConfig() (domain, endpoint string, refreshInterval, shutdownTimeout time.Duration) {
+func loadConfig() (addr, domain, endpoint string, refreshInterval, shutdownTimeout time.Duration) {
+	addr = ":" + mustGetenv("PORT")
 	domain = mustGetenv("PROXY_DOMAIN")
 	endpoint = mustGetenv("PROXY_ENDPOINT")
 
@@ -189,7 +190,7 @@ func loadConfig() (domain, endpoint string, refreshInterval, shutdownTimeout tim
 
 	shutdownTimeout = time.Duration(i) * time.Second
 
-	return domain, endpoint, refreshInterval, shutdownTimeout
+	return addr, domain, endpoint, refreshInterval, shutdownTimeout
 }
 
 func main() {
@@ -200,19 +201,22 @@ func main() {
 		log.Fatalf("error reading .env: %v", err)
 	}
 
-	domain, endpoint, refreshInterval, shutdownTimeout := loadConfig()
-
+	addr, domain, endpoint, refreshInterval, shutdownTimeout := loadConfig()
 	log.Printf("* refresh interval: %s", refreshInterval)
 	log.Printf("* shutdown timeout: %s", shutdownTimeout)
 	log.Printf("*         endpoint: %s", endpoint)
 	log.Printf("*           domain: %s", domain)
+	log.Println()
+	log.Printf("Listening on %s", addr)
 
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	g, ctx := errgroup.WithContext(ctx)
 
 	mapping := &syncMap{}
 
-	server := &http.Server{}
+	server := &http.Server{
+		Addr: addr,
+	}
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		proxy(w, r, mapping, domain)
 	})
