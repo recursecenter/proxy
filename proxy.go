@@ -212,8 +212,8 @@ func main() {
 	log.Printf("* refresh interval: %s", refreshInterval)
 	log.Printf("*           domain: %s", domain)
 	log.Printf("*         endpoint: %s", endpoint)
-	log.Printf("* Listening on http://0.0.0.0:%s", addr)
-	log.Printf("* Listening on http://[::]:%s", addr)
+	log.Printf("* Listening on http://0.0.0.0%s", addr)
+	log.Printf("* Listening on http://[::]%s", addr)
 
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	g, ctx := errgroup.WithContext(ctx)
