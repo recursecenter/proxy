@@ -1,3 +1,4 @@
 config.*.yml
+bin/
 .env
 __debug_bin
