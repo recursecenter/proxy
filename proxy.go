@@ -146,15 +146,6 @@ func proxy(w http.ResponseWriter, r *http.Request, mapping *syncMap, domain stri
 	proxy.ServeHTTP(w, r)
 }
 
-func mustGetenv(key string) string {
-	value, ok := os.LookupEnv(key)
-	if !ok {
-		log.Fatalf("error: %s not set", key)
-	}
-
-	return value
-}
-
 func getenv(key, fallback string) string {
 	value, ok := os.LookupEnv(key)
 	if !ok {
@@ -164,42 +155,29 @@ func getenv(key, fallback string) string {
 	return value
 }
 
-func getenvInt(key string, fallback int) (int, error) {
+func mustGetenv(key string) string {
 	value, ok := os.LookupEnv(key)
 	if !ok {
-		return fallback, nil
+		log.Fatalf("error: %s not set", key)
+	}
+
+	return value
+}
+
+// Returns the value of the environment variable as a time.Duration in seconds.
+// Panics if the environment variable is set but fails to parse.
+func mustGetenvDuration(key string, fallback time.Duration) time.Duration {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		return fallback
 	}
 
 	i, err := strconv.Atoi(value)
 	if err != nil {
-		return 0, fmt.Errorf("%s must be an integer: %v", key, err)
-	} else if i < 1 {
-		return 0, fmt.Errorf("%s must be at least 1: %v", key, err)
+		log.Fatalf("error: %s must be an integer: %v", key, err)
 	}
 
-	return i, nil
-}
-
-func loadConfig() (addr, domain, endpoint string, refreshInterval, shutdownTimeout time.Duration) {
-	addr = ":" + getenv("PORT", "80")
-	domain = mustGetenv("PROXY_DOMAIN")
-	endpoint = mustGetenv("PROXY_ENDPOINT")
-
-	i, err := getenvInt("PROXY_REFRESH_INTERVAL", 5)
-	if err != nil {
-		log.Fatalf("error: %v", err)
-	}
-
-	refreshInterval = time.Duration(i) * time.Second
-
-	i, err = getenvInt("PROXY_SHUTDOWN_TIMEOUT", 10)
-	if err != nil {
-		log.Fatalf("error: %v", err)
-	}
-
-	shutdownTimeout = time.Duration(i) * time.Second
-
-	return addr, domain, endpoint, refreshInterval, shutdownTimeout
+	return time.Duration(i) * time.Second
 }
 
 func main() {
@@ -210,11 +188,30 @@ func main() {
 		log.Fatalf("error: can't reading .env: %v", err)
 	}
 
-	addr, domain, endpoint, refreshInterval, shutdownTimeout := loadConfig()
-	log.Printf("* refresh interval: %s", refreshInterval)
+	addr := ":" + getenv("PORT", "80")
+	domain := mustGetenv("DOMAIN")
+	endpoint := mustGetenv("ENDPOINT")
+	readTimeout := mustGetenvDuration("READ_TIMEOUT", 5*time.Second)
+	writeTimeout := mustGetenvDuration("WRITE_TIMEOUT", 10*time.Second)
+	shutdownTimeout := mustGetenvDuration("SHUTDOWN_TIMEOUT", 10*time.Second)
+	refreshInterval := mustGetenvDuration("REFRESH_INTERVAL", 5*time.Second)
+
+	if readTimeout < 1*time.Second {
+		log.Fatalf("error: read timeout must be at least 1 second")
+	} else if writeTimeout < 1*time.Second {
+		log.Fatalf("error: write timeout must be at least 1 second")
+	} else if shutdownTimeout < 1*time.Second {
+		log.Fatalf("error: shutdown timeout must be at least 1 second")
+	} else if refreshInterval < 1*time.Second {
+		log.Fatalf("error: refresh interval must be at least 1 second")
+	}
+
+	log.Printf("*     read timeout: %s", readTimeout)
+	log.Printf("*    write timeout: %s", writeTimeout)
 	log.Printf("* shutdown timeout: %s", shutdownTimeout)
-	log.Printf("*         endpoint: %s", endpoint)
+	log.Printf("* refresh interval: %s", refreshInterval)
 	log.Printf("*           domain: %s", domain)
+	log.Printf("*         endpoint: %s", endpoint)
 	log.Printf("* Listening on http://0.0.0.0:%s", addr)
 	log.Printf("* Listening on http://[::]:%s", addr)
 
@@ -224,7 +221,9 @@ func main() {
 	mapping := &syncMap{}
 
 	server := &http.Server{
-		Addr: addr,
+		Addr:         addr,
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
 	}
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		proxy(w, r, mapping, domain)
