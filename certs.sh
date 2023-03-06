@@ -24,30 +24,30 @@ function endpoint_to_update() {
 }
 
 function create_sni_endpoint() {
-    local keyfile="$1"
-    local certfile="$2"
+    local certfile="$1"
+    local keyfile="$2"
 
     heroku_curl --request POST "https://api.heroku.com/apps/$HEROKU_APP_NAME/sni-endpoints" \
                 --header "Content-Type: application/json" \
                 --data @<<END
 {
-    "private_key": "$(cat "$keyfile")",
     "certificate_chain": "$(cat "$certfile")",
+    "private_key": "$(cat "$keyfile")",
 }
 END
 }
 
 function update_sni_endpoint() {
     local id="$1"
-    local keyfile="$1"
     local certfile="$2"
+    local keyfile="$3"
 
     heroku_curl --request PATCH "https://api.heroku.com/apps/$HEROKU_APP_NAME/sni-endpoints/$id" \
                 --header "Content-Type: application/json" \
                 --data @<<END
 {
-    "private_key": "$(cat "$keyfile")",
     "certificate_chain": "$(cat "$certfile")",
+    "private_key": "$(cat "$keyfile")",
 }
 END
 }
@@ -62,8 +62,8 @@ function checkenv() {
 }
 
 function request_certificate() {
-    local keyfile="$1"
-    local certfile="$2"
+    local certfile="$1"
+    local keyfile="$2"
 
     git clone https://github.com/acmesh-official/acme.sh.git
 
@@ -90,12 +90,12 @@ certfile="/tmp/*.$DOMAIN.crt"
 
 case "$1" in
     issue)
-        request_certificate "$keyfile" "$certfile"
-        create_sni_endpoint "$keyfile" "$certfile"
+        request_certificate "$certfile" "$keyfile"
+        create_sni_endpoint "$certfile" "$keyfile"
         ;;
     renew)
         request_certificate
-        update_sni_endpoint "$(endpoint_to_update | jq --raw-output '.id')" "$keyfile" "$certfile"
+        update_sni_endpoint "$(endpoint_to_update | jq --raw-output '.id')" "$certfile" "$keyfile"
         ;;
     *)
         echo "Usage: $0 [issue|renew]"
