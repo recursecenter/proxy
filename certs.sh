@@ -6,7 +6,10 @@ set -f # Disable file globbing
 set -o pipefail # Fail a pipe if any subcommand fails
 
 # To generate HEROKU_API_KEY, run:
-# heroku authorizations:create --scope=read,write --description="..."
+#   heroku authorizations:create --scope=read,write --description="..."
+
+# To set automatically set the HEROKU_APP_NAME config var, run:
+#   heroku labs:enable runtime-dyno-metadata
 
 function heroku_curl() {
     curl --silent --fail \
@@ -62,15 +65,19 @@ function checkenv() {
 }
 
 function request_certificate() {
-    local certfile="$1"
-    local keyfile="$2"
+    local email="$1"
+    local domain="$2"
+    local certfile="$3"
+    local keyfile="$4"
 
     git clone https://github.com/acmesh-official/acme.sh.git
 
-    ./acme.sh/acme.sh --install --force --nocron --accountemail "$LETS_ENCRYPT_EMAIL"
-    ~/.acme.sh/acme.sh --set-default-ca --server letsencrypt
+    pushd acme.sh > /dev/null
+    ./acme.sh/acme.sh --install --force --nocron --accountemail "$email"
+    popd > /dev/null 
 
-    ~/.acme.sh/acme.sh --issue -d "*.$DOMAIN" --dns dns_aws --keylength ec-256 --key-file "$keyfile" --fullchain-file "$certfile" --log
+    ~/.acme.sh/acme.sh --set-default-ca --server letsencrypt
+    ~/.acme.sh/acme.sh --issue --domain "$domain" --dns dns_aws --keylength ec-256 --key-file "$keyfile" --fullchain-file "$certfile" --log
 }
 
 if [ "$#" -ne 1 ]; then
@@ -90,11 +97,11 @@ certfile="/tmp/*.$DOMAIN.crt"
 
 case "$1" in
     issue)
-        request_certificate "$certfile" "$keyfile"
+        request_certificate "$LETS_ENCRYPT_EMAIL" "*.$DOMAIN" "$certfile" "$keyfile"
         create_sni_endpoint "$certfile" "$keyfile"
         ;;
     renew)
-        request_certificate
+        request_certificate "$LETS_ENCRYPT_EMAIL" "*.$DOMAIN" "$certfile" "$keyfile"
         update_sni_endpoint "$(endpoint_to_update | jq --raw-output '.id')" "$certfile" "$keyfile"
         ;;
     *)
