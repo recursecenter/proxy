@@ -73,7 +73,7 @@ function request_certificate() {
     git clone https://github.com/acmesh-official/acme.sh.git
 
     pushd acme.sh > /dev/null
-    ./acme.sh/acme.sh --install --force --nocron --accountemail "$email"
+    ./acme.sh --install --force --nocron --accountemail "$email"
     popd > /dev/null 
 
     ~/.acme.sh/acme.sh --set-default-ca --server letsencrypt
