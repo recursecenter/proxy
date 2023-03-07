@@ -236,17 +236,17 @@ func main() {
 	// Fetch the domain every refereshInterval
 	g.Go(func() error {
 		for {
+			m, err := fetchDomains(ctx, endpoint)
+			if err != nil {
+				log.Printf("error: couldn't fetching domains: %v", err)
+			} else {
+				mapping.replace(m)
+			}
+
 			select {
 			case <-ctx.Done():
 				return nil
 			case <-time.After(refreshInterval):
-				m, err := fetchDomains(ctx, endpoint)
-				if err != nil {
-					log.Printf("error: couldn't fetching domains: %v", err)
-					continue
-				}
-
-				mapping.replace(m)
 			}
 		}
 	})
