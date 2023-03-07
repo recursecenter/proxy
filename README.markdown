@@ -24,7 +24,7 @@ Proxy gets its configuration from environmental variables:
 | `PORT` | 8080 | The port that Proxy should listen on. | No | 80 |
 | `READ_TIMEOUT` | 10 | Maximum number of seconds Proxy waits to read a request from a client. | No | 5 |
 | `WRITE_TIMEOUT` | 15 | Maximum number of seconds Proxy will spend writing a response to the client before timing out. This includes time spend proxying the request. | No | 10 |
-| `SHUTDOWN_TIMEOUT` | 20 | Maximum number of seconds Proxy will wait for in-flight requests to complete while shutting down. After this duration has expired, Proxy will kill all inflight requests. | No | 10 |
+| `SHUTDOWN_TIMEOUT` | 20 | Maximum number of seconds Proxy will wait for in-flight requests to complete while shutting down. After this duration has expired, Proxy will kill all requests that are still running. | No | 10 |
 | `REFRESH_INTERVAL` | 10 | Proxy fetches `$ENDPOINT` every `$REFRESH_INTERVAL` seconds. | No | 5 |
 
 ## Running
