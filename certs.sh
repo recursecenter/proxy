@@ -9,14 +9,25 @@
 #  - Let's Encrypt
 #
 # How it works:
-#  - `certs.sh issue` generates or renews a certificate for *.$DOMAIN, and
-#    registers it with Heroku.
-#  - Uses acme.sh with the dns_aws dnsapi provider to satisfy the DNS-01 challenge.
-#  - Stores acme.sh state encrypted in S3. This means you can run `certs.sh issue`
-#    as many times as you want. The certificate will only be renewed if it's nearing
-#    its expiration. Use Heroku Scheduler to run `certs.sh issue` daily.
-#  - `certs.sh clear-cache` deletes the acme.sh state from S3.
-#  - The --staging flag can be used to target Let's Encrypt's staging server.
+#
+#  `certs.sh issue` generates or renews a certificate for *.$DOMAIN, and
+#  registers it with Heroku.
+#
+#  Certs.sh uses acme.sh with the dns_aws dnsapi provider to satisfy the DNS-01 challenge.
+#
+#  The --staging flag can be used to target Let's Encrypt's staging server. Use this if
+#  you're testing changes to this script.
+#
+#  Acme.sh state is cached encrypted in S3. This means you can run `certs.sh issue`
+#  as many times as you want. The certificate will only be renewed if it's nearing
+#  its expiration. Use Heroku Scheduler to run `certs.sh issue` daily.
+#
+#  Acme.sh state is cached by app name ($HEROKU_APP_NAME.tar.gz), so multiple apps can
+#  use the same bucket to cache their state. Staging state is cached
+#  separately ($HEROKU_APP_NAME.staging.tar.gz).
+#
+#  `certs.sh clear-cache` deletes the acme.sh state from S3. Remember to use --staging
+#  if you want to clear the staging cache while you're modifying this script.
 #
 # Dependencies:
 #  - curl (comes pre-installed on Heroku)
