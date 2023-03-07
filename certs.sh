@@ -8,13 +8,134 @@ set -o pipefail # Fail a pipe if any subcommand fails
 
 # Requires heroku-community/apt buildpack with the following Aptfile:
 #   jq
-#   awscli
 
 # To generate HEROKU_API_KEY, run:
 #   heroku authorizations:create --scope=read,write --description="..."
 
 # To set automatically set the HEROKU_APP_NAME config var, run:
 #   heroku labs:enable runtime-dyno-metadata
+
+function urlencode() {
+    local string="$1"
+    local strlen=${#string}
+    local encoded=""
+    local pos c
+
+    for (( pos=0 ; pos<strlen ; pos++ )); do
+        c=${string:$pos:1}
+        case "$c" in
+            [A-Za-z0-9-._~] ) encoded="$encoded$c" ;;
+            * )               encoded="$encoded%"$(printf "%02X" "'$c") ;;
+        esac
+    done
+
+    echo -n "$encoded"
+}
+
+function urlencode_path() {
+    urlencode "$1" | sed 's/%2F/\//g'
+}
+
+function hmac_sha256 {
+    local key="$1"
+    local data="$2"
+
+    echo -n "$data" | openssl dgst -sha256 -mac HMAC -macopt "$key"
+}
+
+function aws_authorization_header() {
+    local method="$1"
+    local region="$2"
+    local service="$3"
+    local host="$4"
+    local canonical_uri="$5"
+    local canonical_querystring="$6"
+    local timestamp="$7"
+    local hexdigest="$8"
+
+    local datestamp=$(echo -n "$timestamp" | cut -c 1-8)
+    local signed_headers="host;x-amz-content-sha256;x-amz-date"
+
+    local scope="$datestamp/$region/$service/aws4_request"
+
+    local canonical_request="$method
+$(urlencode_path "$canonical_uri")
+$(urlencode "$canonical_querystring")
+host:$host
+x-amz-content-sha256:$(echo -n "$hexdigest")
+x-amz-date:$timestamp
+
+$signed_headers
+$hexdigest"
+
+    local string_to_sign="AWS4-HMAC-SHA256
+$timestamp
+$scope
+$(echo -n "$canonical_request" | openssl dgst -sha256)"
+
+    local date_key=$(hmac_sha256 key:"AWS4$AWS_SECRET_ACCESS_KEY" "$datestamp")
+    local date_region_key=$(hmac_sha256 hexkey:"$date_key" "$region")
+    local date_region_service_key=$(hmac_sha256 hexkey:"$date_region_key" "$service")
+    local signing_key=$(hmac_sha256 hexkey:"$date_region_service_key" "aws4_request")
+
+    local signature=$(hmac_sha256 hexkey:"$signing_key" "$string_to_sign")
+
+    echo "Authorization: AWS4-HMAC-SHA256 Credential=$AWS_ACCESS_KEY_ID/$scope,SignedHeaders=$signed_headers,Signature=$signature"
+}
+
+function s3_curl() {
+    local method="$1"
+    local bucket="$2"
+    local filename="$3"
+    local querystring="$4"
+    local hexdigest="$5"
+
+    shift 5
+
+    local timestamp=$(date -u +%Y%m%dT%H%M%SZ)
+
+    local host="s3.amazonaws.com"
+    local uri="/$bucket/$filename"
+
+    local authorization=$(aws_authorization_header "$method" "$AWS_DEFAULT_REGION" "s3" "$host" "$uri" "$querystring" "$timestamp" "$hexdigest")
+
+    curl --fail --silent \
+         --request "$method" \
+         --header "Host: $host" \
+         --header "x-amz-content-sha256: $hexdigest" \
+         --header "x-amz-date: $timestamp" \
+         --header "$authorization" \
+         "$@" \
+        "https://$host$uri$querystring"
+}
+
+function s3_get_object() {
+    local bucket="$1"
+    local filename="$2"
+
+    local hexdigest=$(echo -n "" | openssl dgst -sha256)
+
+    s3_curl "GET" "$bucket" "$filename" "" "$hexdigest" --output "$filename"
+}
+
+function s3_put_object() {
+    local bucket="$1"
+    local filename="$2"
+
+    local hexdigest=$(cat "$filename" | openssl dgst -sha256)
+
+    s3_curl "PUT" "$bucket" "$filename" "" "$hexdigest" --upload-file "$filename"
+}
+
+function s3_delete_object() {
+    local bucket="$1"
+    local filename="$2"
+
+    local hexdigest=$(echo -n "" | openssl dgst -sha256)
+
+    s3_curl "DELETE" "$bucket" "$filename" "$hexdigest"
+}
+
 
 function heroku_curl() {
     curl --silent --fail-with-body \
@@ -130,27 +251,13 @@ function renew_certificates_if_necessary() {
     "$HOME/.acme.sh/acme.sh" --cron --log "$flags"
 }
 
-function s3_url() {
-    local bucket="$1"
-    local filename="$2"
-
-    echo "s3://$bucket/$filename"
-}
-
-function s3_object_exists() {
-    local bucket="$1"
-    local filename="$2"
-
-    aws s3 ls $(s3_url "$bucket" "$filename") > /dev/null 2>&1
-}
-
 function save_cache() {
     local bucket="$1"
     local cachefile="$2"
     local cachedir="$3"
 
     tar -czf "$cachefile" -C "$(dirname "$cachedir")" "$(basename "$cachedir")"
-    aws s3 cp "$cachefile" $(s3_url "$bucket" "$cachefile")
+    s3_put_object "$bucket" "$cachefile"
 }
 
 function restore_cache() {
@@ -158,14 +265,12 @@ function restore_cache() {
     local cachefile="$2"
     local cachedir="$3"
 
-    if ! s3_object_exists "$bucket" "$cachefile"; then
+    if ! s3_get_object "$bucket" "$cachefile"; then
         return
     fi
 
-    aws s3 cp $(s3_url "$bucket" "$cachefile") "$cachefile"
     tar -xzf "$cachefile" -C $(dirname "$cachedir")
 }
-
 
 staging=false
 
@@ -242,7 +347,7 @@ case "$1" in
         save_cache "$CERTS_BUCKET" "$cachefile" "$cachedir"
         ;;
     clear-cache)
-        aws s3 rm $(s3_url "$CERTS_BUCKET" "$cachefile")
+        s3_delete_object "$CERTS_BUCKET" "$cachefile"
         ;;
     *)
         echo "Usage: $0 [--staging] <issue|clear-cache>"
