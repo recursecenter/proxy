@@ -1,19 +1,119 @@
 #!/bin/bash
 
+# Wildcard certificates from Let's Encrypt for Heroku apps
+#
+# Services:
+#  - Heroku
+#  - Amazon S3
+#  - Amazon Route 53
+#  - Let's Encrypt
+#
+# How it works:
+#  - `certs.sh issue` generates or renews a certificate for *.$DOMAIN, and
+#    registers it with Heroku.
+#  - Uses acme.sh with the dns_aws dnsapi provider to satisfy the DNS-01 challenge.
+#  - Stores acme.sh state encrypted in S3. This means you can run `certs.sh issue`
+#    as many times as you want. The certificate will only be renewed if it's nearing
+#    its expiration. Use Heroku Scheduler to run `certs.sh issue` daily.
+#  - `certs.sh clear-cache` deletes the acme.sh state from S3.
+#  - The --staging flag can be used to target Let's Encrypt's staging server.
+#
+# Dependencies:
+#  - curl (comes pre-installed on Heroku)
+#  - openssl (ditto)
+#  - jq (use the heroku-community/apt buildpack with "jq" in your Aptfile)
+#  - acme.sh (installed and managed by this script)
+#
+# Environmental variables:
+#  - HEROKU_APP_NAME
+#  - HEROKU_API_KEY
+#  - AWS_ACCESS_KEY_ID
+#  - AWS_SECRET_ACCESS_KEY
+#  - AWS_DEFAULT_REGION
+#  - LETS_ENCRYPT_EMAIL
+#  - CERTS_BUCKET
+#
+# Required AWS IAM permissions:
+#  - s3:PutObject
+#  - s3:GetObject
+#  - s3:DeleteObject
+#  - route53:GetHostedZone
+#  - route53:ListResourceRecordSets
+#  - route53:ChangeResourceRecordSets
+#  - route53:ListHostedZones
+#  - route53:GetHostedZoneCount
+#  - route53:ListHostedZonesByName
+#
+# Setup:
+#  - Generate a Heroku API key with read/write access, and set it as HEROKU_API_KEY:
+#    heroku config:set HEROKU_API_KEY=$(heroku authorizations:create --short --scope=read,write --description="...")
+#
+#  - Enable runtime-dyno-metadata to automatically set HEROKU_APP_NAME:
+#    heroku labs:enable runtime-dyno-metadata
+#
+#  - Create a bucket on S3 with no public permissions, and set CERTS_BUCKET to its name. Make sure
+#    it uses server-side encryption wtih S3 managed keys (SSE-S3). This is the default as of March 2023.
+#
+#  - Create a Route 53 IAM polcy (substitute $ZONE_ID):
+#    {
+#        "Version": "2012-10-17",
+#        "Statement": [
+#            {
+#                "Sid": "VisualEditor0",
+#                "Effect": "Allow",
+#                "Action": [
+#                    "route53:GetHostedZone",
+#                    "route53:ChangeResourceRecordSets",
+#                    "route53:ListResourceRecordSets"
+#                ],
+#                "Resource": "arn:aws:route53:::hostedzone/$ZONE_ID"
+#            },
+#            {
+#                "Sid": "VisualEditor1",
+#                "Effect": "Allow",
+#                "Action": [
+#                    "route53:ListHostedZones",
+#                    "route53:GetHostedZoneCount",
+#                    "route53:ListHostedZonesByName"
+#                ],
+#                "Resource": "*"
+#            }
+#        ]
+#    }
+#
+#  - Create a S3 IAM policy (substitute $BUCKET_NAME):
+#    {
+#        "Version": "2012-10-17",
+#        "Statement": [
+#            {
+#                "Sid": "VisualEditor0",
+#                "Effect": "Allow",
+#                "Action": [
+#                    "s3:PutObject",
+#                    "s3:GetObject",
+#                    "s3:DeleteObject"
+#                ],
+#                "Resource": "arn:aws:s3:::$BUCKET_NAME/*"
+#            }
+#        ]
+#    }
+#
+#  - Create an IAM user with the above policies, and set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.
+#  - Set AWS_DEFAULT_REGION to the region of your S3 bucket.
+#  - Set LETS_ENCRYPT_EMAIL to the address you want to receive Let's Encrypt emails.
+#  - Deploy the app
+#  - Run `heroku run ./certs.sh issue` to generate a certificate.
+#  - Set up Heroku Scheduler to run `./certs.sh renew` daily.
+
 set -e # Exit immediately if a command fails
 set -E # Trigger the ERR trap when a command fails
 set -u # Treat unset variables as an error
 set -f # Disable file globbing
 set -o pipefail # Fail a pipe if any subcommand fails
 
-# Requires heroku-community/apt buildpack with the following Aptfile:
-#   jq
+## S3
 
-# To generate HEROKU_API_KEY, run:
-#   heroku authorizations:create --scope=read,write --description="..."
-
-# To set automatically set the HEROKU_APP_NAME config var, run:
-#   heroku labs:enable runtime-dyno-metadata
+# AWS specific url-encoding rules
 
 function urlencode() {
     local string="$1"
@@ -136,6 +236,8 @@ function s3_delete_object() {
     s3_curl "DELETE" "$bucket" "$filename" "$hexdigest"
 }
 
+
+## Heroku API
 
 function heroku_curl() {
     curl --silent --fail-with-body \
