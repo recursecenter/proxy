@@ -36,6 +36,7 @@
 #  - acme.sh (installed and managed by this script)
 #
 # Environmental variables:
+#  - DOMAIN
 #  - HEROKU_APP_NAME
 #  - HEROKU_API_KEY
 #  - AWS_ACCESS_KEY_ID
@@ -112,6 +113,7 @@
 #  - Create an IAM user with the above policies, and set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.
 #  - Set AWS_DEFAULT_REGION to the region of your S3 bucket.
 #  - Set LETS_ENCRYPT_EMAIL to the address you want to receive Let's Encrypt emails.
+#  - Set DOMAIN to the domain you want to issue a certificate for (e.g. "example.com")
 #  - Deploy the app
 #  - Run `heroku run ./certs.sh issue` to generate a certificate.
 #  - Set up Heroku Scheduler to run `./certs.sh renew` daily.
