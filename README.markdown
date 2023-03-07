@@ -29,7 +29,7 @@ Proxy gets its configuration from environmental variables:
 
 ## Running
 
-Proxy runs in the foreground and logs to STDOUT. All error messages contain the string "error:". When it receives a SIGINT or a SIGTERM, it shuts down.
+Proxy runs in the foreground and logs to STDOUT. All error messages contain the string "error:". When it receives a SIGINT or a SIGTERM, Proxy shuts down.
 
 If present, Proxy will read its configuration out of a `.env` file. Here's a starting point for development:
 
