@@ -274,13 +274,12 @@ function create_sni_endpoint() {
 
     heroku_curl --request POST "https://api.heroku.com/apps/$HEROKU_APP_NAME/sni-endpoints" \
                 --header "Content-Type: application/json" \
-                --data @<(cat <<END
+                --data @- <<END
 {
     "certificate_chain": "$(cat "$certfile" | escape_newlines)",
     "private_key": "$(cat "$keyfile" | escape_newlines)"
 }
 END
-)
 }
 
 function update_sni_endpoint() {
@@ -290,13 +289,12 @@ function update_sni_endpoint() {
 
     heroku_curl --request PATCH "https://api.heroku.com/apps/$HEROKU_APP_NAME/sni-endpoints/$id" \
                 --header "Content-Type: application/json" \
-                --data @<(cat <<END
+                --data @- <<END
 {
     "certificate_chain": "$(cat "$certfile" | escape_newlines)",
     "private_key": "$(cat "$keyfile" | escape_newlines)"
 }
 END
-)
 }
 
 function attach_sni_endpoint() {
@@ -305,12 +303,11 @@ function attach_sni_endpoint() {
 
     heroku_curl --request PATCH "https://api.heroku.com/apps/$HEROKU_APP_NAME/domains/$domain" \
                 --header "Content-Type: application/json" \
-                --data @<(cat <<END
+                --data @- <<END
 {
     "sni_endpoint": "$id"
 }
 END
-)
 }
 
 function checkenv() {
