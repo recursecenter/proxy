@@ -271,7 +271,7 @@ function endpoint_id_to_update() {
     local id="$(get_domain "$domain" | jq --raw-output '.sni_endpoint | .id')"
 
     if [ "$id" = "null" ]; then
-        id=""        
+        id=""
     fi
 
     echo "$id"
@@ -339,7 +339,7 @@ function install_acme_sh() {
 
     pushd acme.sh > /dev/null
     ./acme.sh --install --force --nocron --accountemail "$email"
-    popd > /dev/null 
+    popd > /dev/null
 
     "$HOME/.acme.sh/acme.sh" --set-default-ca --server letsencrypt
 }
@@ -439,6 +439,10 @@ case "$1" in
             install_acme_sh "$LETS_ENCRYPT_EMAIL"
             issue_certificate "$wildcard" "$certfile" "$keyfile" "$acmeflags"
         fi
+
+	echo "Saving cache and quitting early"
+    	save_cache "$CERTS_BUCKET" "$cachefile" "$cachedir"
+	exit 0
 
         # If the certificate file doesn't exist, then the certificates didn't need to be renewed.
         if [ ! -f "$certfile" ]; then
