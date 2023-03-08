@@ -171,9 +171,8 @@ function sha256 {
 
 function hmac_sha256 {
     local key="$1"
-    local data="$2"
 
-    echo -n "$data" | openssl dgst -sha256 -mac HMAC -macopt "$key" | last_field
+    openssl dgst -sha256 -mac HMAC -macopt "$key" | last_field
 }
 
 function aws_authorization_header() {
@@ -206,12 +205,12 @@ $timestamp
 $scope
 $(echo -n "$canonical_request" | sha256)"
 
-    local date_key=$(hmac_sha256 key:"AWS4$AWS_SECRET_ACCESS_KEY" "$datestamp")
-    local date_region_key=$(hmac_sha256 hexkey:"$date_key" "$region")
-    local date_region_service_key=$(hmac_sha256 hexkey:"$date_region_key" "$service")
-    local signing_key=$(hmac_sha256 hexkey:"$date_region_service_key" "aws4_request")
+    local date_key=$(echo -n "$datestamp" | hmac_sha256 key:"AWS4$AWS_SECRET_ACCESS_KEY")
+    local date_region_key=$(echo -n "$region" | hmac_sha256 hexkey:"$date_key")
+    local date_region_service_key=$(echo -n "$service" | hmac_sha256 hexkey:"$date_region_key")
+    local signing_key=$(echo -n "aws4_request" | hmac_sha256 hexkey:"$date_region_service_key")
 
-    local signature=$(hmac_sha256 hexkey:"$signing_key" "$string_to_sign")
+    local signature=$(echo -n "$string_to_sign" | hmac_sha256 hexkey:"$signing_key")
 
     echo "Authorization: AWS4-HMAC-SHA256 Credential=$AWS_ACCESS_KEY_ID/$scope,SignedHeaders=$signed_headers,Signature=$signature"
 }
