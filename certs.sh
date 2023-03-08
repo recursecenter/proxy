@@ -10,8 +10,10 @@
 #
 # How it works:
 #
-#  `certs.sh issue` generates or renews a certificate for *.$DOMAIN, and
-#  registers it with Heroku.
+#  `certs.sh issue` generates or renews certificates for a set of domains using
+#  Let's Encrypt, and installs them on Heroku. Crucially, it supports wildcard
+#  domains. The first domain specified is the primary domain. Certs.sh uses it
+#  to determine which of HEROKU_APP_NAME's domains to install the certificate on.
 #
 #  Certs.sh uses acme.sh with the dns_aws dnsapi provider to satisfy the DNS-01 challenge.
 #
@@ -39,10 +41,9 @@
 #
 #  The jq package depends on libjq1, but if your Aptfile contains the only the former,
 #  the latter won't be installed. I'm not sure why this is, but adding libjq1 to the
-#  Aptfile explicitly fixed the problem
+#  Aptfile explicitly fixed the problem.
 #
 # Environmental variables:
-#  - DOMAIN
 #  - HEROKU_APP_NAME
 #  - HEROKU_API_KEY
 #  - AWS_ACCESS_KEY_ID
@@ -252,7 +253,7 @@ function s3_delete_object() {
 
     local hexdigest=$(echo -n "" | openssl dgst -sha256)
 
-    s3_curl "DELETE" "$bucket" "$filename" "$hexdigest"
+    s3_curl "DELETE" "$bucket" "$filename" "" "$hexdigest"
 }
 
 
@@ -354,13 +355,22 @@ function upgrade_acme_sh() {
     "$HOME/.acme.sh/acme.sh" --upgrade
 }
 
-function issue_certificate() {
-    local domain="$1"
-    local certfile="$2"
-    local keyfile="$3"
-    local flags="$4"
+function prepend_each_arg() {
+    local prefix="$1"
+    shift
 
-    "$HOME/.acme.sh/acme.sh" --issue --domain "$domain" --dns dns_aws --keylength ec-256 --key-file "$keyfile" --fullchain-file "$certfile" --log "$flags"
+    for arg in "$@"; do
+        echo "$prefix" "$arg"
+    done
+}
+
+function issue_certificate() {
+    local certfile="$1"
+    local keyfile="$2"
+    local flags="$3"
+    shift 3
+
+    "$HOME/.acme.sh/acme.sh" --issue --dns dns_aws --keylength ec-256 --key-file "$keyfile" --fullchain-file "$certfile" --log "$flags" $(prepend_each_arg --domain "$@")
 }
 
 function renew_certificates_if_necessary() {
@@ -390,6 +400,21 @@ function restore_cache() {
     tar -xzf "$cachefile" -C $(dirname "$cachedir")
 }
 
+function usage() {
+    echo "usage: $0 [--staging] issue [--force-install] <primary-domain> [additional-domains ...]"
+    echo "       $0 [--staging] clear-cache"
+}   
+
+if [ "$#" -lt 1 ]; then
+    usage
+    exit 1
+fi
+
+if [ "$1" = "--help" -o "$1" == "help" ]; then
+    usage
+    exit 0
+fi
+
 staging=false
 
 if [ "$1" = "--staging" ]; then
@@ -397,12 +422,6 @@ if [ "$1" = "--staging" ]; then
     shift
 fi
 
-if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 [--staging] <issue|clear-cache>"
-    exit 1
-fi
-
-checkenv DOMAIN
 checkenv AWS_ACCESS_KEY_ID
 checkenv AWS_SECRET_ACCESS_KEY
 checkenv AWS_DEFAULT_REGION
@@ -410,11 +429,6 @@ checkenv CERTS_BUCKET
 checkenv LETS_ENCRYPT_EMAIL
 checkenv HEROKU_APP_NAME
 checkenv HEROKU_API_KEY
-
-wildcard="*.$DOMAIN"
-
-keyfile="/tmp/$wildcard.key"
-certfile="/tmp/$wildcard.crt"
 
 cachedir="$HOME/.acme.sh"
 
@@ -426,16 +440,35 @@ else
     cachefile="${HEROKU_APP_NAME}.tar.gz"
 fi
 
-# We test for the existence of the certificate file to determine if the certificates
-# needed to be renewed. Delete them here so that we don't accidentally think the certs
-# have been renewed when they haven't. This matters in development – on Heroku, the
-# filesystem is ephemeral, so this is a no-op.
-rm -f "$keyfile" "$certfile"
-
 trap "echo 'error: \"$0 $1\" failed'" ERR
 
 case "$1" in
     issue)
+        shift
+
+        force_install=false
+        if [ "$1" = "--force-install" ]; then
+            force_install=true
+            shift
+        fi
+
+        if [ "$#" -lt 1 ]; then
+            echo "error: no domains specified"
+            usage
+            exit 1
+        fi
+
+        primary_domain="$1"
+
+        keyfile="/tmp/$primary_domain.key"
+        certfile="/tmp/$primary_domain.crt"
+
+        # We test for the existence of the certificate file to determine if the certificates
+        # needed to be renewed. Delete them here so that we don't accidentally think the certs
+        # have been renewed when they haven't. This matters in development – on Heroku, the
+        # filesystem is ephemeral, so this is a no-op.
+        rm -f "$keyfile" "$certfile"
+
         restore_cache "$CERTS_BUCKET" "$cachefile" "$cachedir"
 
         if [ -d "$cachedir" ]; then
@@ -443,36 +476,40 @@ case "$1" in
             renew_certificates_if_necessary "$acmeflags"
         else
             install_acme_sh "$LETS_ENCRYPT_EMAIL"
-            issue_certificate "$wildcard" "$certfile" "$keyfile" "$acmeflags"
+            issue_certificate "$certfile" "$keyfile" "$acmeflags" "$@"
         fi
 
-	echo "Saving cache and quitting early"
     	save_cache "$CERTS_BUCKET" "$cachefile" "$cachedir"
-	exit 0
+
+        # If renew_certificates_if_necessary didn't renew the certificates, they won't be installed into /tmp.
+        # If we want to test the Heroku API calls, use --force-install to force the certificates to be be put
+        # in /tmp so that certs.sh won't exit early with "Nothing to install."
+        if [ "$force_install" = true ]; then
+            "$HOME/.acme.sh/acme.sh" --install-cert --domain "$primary_domain" --key-file "$keyfile" --fullchain-file "$certfile"
+        fi
 
         # If the certificate file doesn't exist, then the certificates didn't need to be renewed.
         if [ ! -f "$certfile" ]; then
-            save_cache "$CERTS_BUCKET" "$cachefile" "$cachedir"
-            echo "Certificates are up to date"
+            echo "Certificates are up to date. Nothing to install."
             exit 0
         fi
 
-        endpoint_id=$(endpoint_id_to_update "$wildcard")
+        endpoint_id=$(endpoint_id_to_update "$primary_domain")
 
         if [ -n "$endpoint_id" ]; then
+            echo "Updating certificate for $primary_domain on Heroku"
             update_sni_endpoint "$endpoint_id" "$certfile" "$keyfile" > /dev/null
         else
+            echo "Installing new certificate for $primary_domain on Heroku"
             endpoint_id=$(create_sni_endpoint "$certfile" "$keyfile" | jq --raw-output '.id')
-            attach_sni_endpoint "$endpoint_id" "$wildcard" > /dev/null
+            attach_sni_endpoint "$endpoint_id" "$primary_domain" > /dev/null
         fi
-
-        save_cache "$CERTS_BUCKET" "$cachefile" "$cachedir"
         ;;
     clear-cache)
         s3_delete_object "$CERTS_BUCKET" "$cachefile"
         ;;
     *)
-        echo "Usage: $0 [--staging] <issue|clear-cache>"
+        usage
         exit 1
         ;;
 esac
