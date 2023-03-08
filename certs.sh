@@ -2,12 +2,6 @@
 
 # Wildcard certificates from Let's Encrypt for Heroku apps
 #
-# Services:
-#  - Heroku
-#  - Amazon S3
-#  - Amazon Route 53
-#  - Let's Encrypt
-#
 # How it works:
 #
 #  `certs.sh issue` generates or renews certificates for a set of domains using
@@ -24,12 +18,22 @@
 #  as many times as you want. The certificate will only be renewed if it's nearing
 #  its expiration. Use Heroku Scheduler to run `certs.sh issue` daily.
 #
+#  If you use certs.sh to issue a wildcard certificate, make sure to put the wildcard
+#  domain in quotes (e.g. certs.sh issue "*.example.com"). Otherwise you might have
+#  shell globbing issues.
+#
 #  Acme.sh state is cached by app name ($HEROKU_APP_NAME.tar.gz), so multiple apps can
 #  use the same bucket to cache their state. Staging state is cached
 #  separately ($HEROKU_APP_NAME.staging.tar.gz).
 #
 #  `certs.sh clear-cache` deletes the acme.sh state from S3. Remember to use --staging
 #  if you want to clear the staging cache while you're modifying this script.
+#
+# External services:
+#  - Heroku
+#  - Amazon S3
+#  - Amazon Route 53
+#  - Let's Encrypt
 #
 # Dependencies:
 #  - curl (comes pre-installed on Heroku)
@@ -74,7 +78,7 @@
 #    heroku labs:enable runtime-dyno-metadata
 #
 #  - Create a bucket on S3 with no public permissions, and set CERTS_BUCKET to its name. Make sure
-#    it uses server-side encryption wtih S3 managed keys (SSE-S3). This is the default as of March 2023.
+#    it uses server-side encryption with S3 managed keys (SSE-S3). This is the default as of March 2023.
 #
 #  - Create a Route 53 IAM polcy (substitute $ZONE_ID):
 #    {
@@ -234,7 +238,7 @@ function s3_curl() {
 
     local authorization=$(aws_authorization_header "$method" "$AWS_DEFAULT_REGION" "s3" "$host" "$uri" "$querystring" "$timestamp" "$hexdigest")
 
-    curl --fail --silent \
+    curl --fail-with-body --silent \
          --request "$method" \
          --header "Host: $host" \
          --header "x-amz-content-sha256: $hexdigest" \
@@ -484,9 +488,9 @@ case "$1" in
         certfile="/tmp/$primary_domain.crt"
 
         # We test for the existence of the certificate file to determine if the certificates
-        # needed to be renewed. Delete them here so that we don't accidentally think the certs
-        # have been renewed when they haven't. This matters in development – on Heroku, the
-        # filesystem is ephemeral, so this is a no-op.
+        # needed to be installed. Delete them here so that we don't accidentally think the certs
+        # have been renewed and need to be installed when they haven't. This only matters in 
+        # development – on Heroku, the filesystem is ephemeral, so this is a no-op.
         rm -f "$keyfile" "$certfile"
 
         restore_cache "$CERTS_BUCKET" "$cachefile" "$cachedir"
@@ -502,13 +506,13 @@ case "$1" in
     	save_cache "$CERTS_BUCKET" "$cachefile" "$cachedir"
 
         # If renew_certificates_if_necessary didn't renew the certificates, they won't be installed into /tmp.
-        # If we want to test the Heroku API calls, use --force-install to force the certificates to be be put
+        # If you want to test the Heroku API calls, use --force-install to force the certificates to be be put
         # in /tmp so that certs.sh won't exit early with "Nothing to install."
         if [ "$force_install" = true ]; then
             "$HOME/.acme.sh/acme.sh" --install-cert --domain "$primary_domain" --key-file "$keyfile" --fullchain-file "$certfile"
         fi
 
-        # If the certificate file doesn't exist, then the certificates didn't need to be renewed.
+        # If the certificate file doesn't exist, then the certificates didn't need to be installed on Heroku.
         if [ ! -f "$certfile" ]; then
             echo "Certificates are up to date. Nothing to install."
             exit 0
