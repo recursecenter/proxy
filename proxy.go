@@ -83,15 +83,23 @@ func fetchDomains(ctx context.Context, url string) (map[string]string, error) {
 	return mapping, nil
 }
 
-func proxy(w http.ResponseWriter, r *http.Request, mapping *syncMap, domain string, forceHTTPS bool) {
-	log.Printf("X-Forwarded-Proto: \"%s\"", r.Header.Get("X-Forwarded-Proto"))
+func proxy(w http.ResponseWriter, r *http.Request, mapping *syncMap, domain string, forceTLS bool) {
+	// r.TLS is always nil right now because Proxy doesn't support TLS natively.
+	// Here for future-proofing only.
+	isTLS := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+
+	if forceTLS && !isTLS {
+		log.Printf("[%s] %s %s; 301 Moved Permanently; redirect http -> https", r.Host, r.Method, r.URL)
+		http.Redirect(w, r, "https://"+r.Host+r.URL.String(), http.StatusMovedPermanently)
+		return
+	}
 
 	subdomain := strings.Split(r.Host, ".")[0]
 
 	// If domain is example.com, then we want to proxy requests to
 	// foo.example.com, but not foo.bar.example.com.
 	if r.Host != subdomain+"."+domain {
-		log.Printf("[%s] %s %s; error: invalid host: %q must be a subdomain of %q", r.Host, r.Method, r.URL, r.Host, domain)
+		log.Printf("[%s] %s %s; 502 Bad Gateway; error: invalid host: %q must be a subdomain of %q", r.Host, r.Method, r.URL, r.Host, domain)
 		w.WriteHeader(http.StatusBadGateway)
 		w.Write([]byte("502 Bad Gateway\n"))
 		return
@@ -99,7 +107,7 @@ func proxy(w http.ResponseWriter, r *http.Request, mapping *syncMap, domain stri
 
 	target, ok := mapping.lookup(subdomain)
 	if !ok {
-		log.Printf("[%s] %s %s; error: unknown host: %s", r.Host, r.Method, r.URL, r.Host)
+		log.Printf("[%s] %s %s; 404 Not Found; error: unknown host: %s", r.Host, r.Method, r.URL, r.Host)
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("404 Not Found\n"))
 		return
@@ -107,7 +115,7 @@ func proxy(w http.ResponseWriter, r *http.Request, mapping *syncMap, domain stri
 
 	u, err := url.Parse(target)
 	if err != nil {
-		log.Printf("[%s] %s %s; error: invalid url: %v", r.Host, r.Method, r.URL, err)
+		log.Printf("[%s] %s %s; 502 Bad Gateway; error: invalid url: %v", r.Host, r.Method, r.URL, err)
 		w.WriteHeader(http.StatusBadGateway)
 		w.Write([]byte("502 Bad Gateway\n"))
 		return
@@ -207,7 +215,7 @@ func main() {
 	addr := ":" + getenv("PORT", "80")
 	domain := mustGetenv("DOMAIN")
 	endpoint := mustGetenv("ENDPOINT")
-	forceHTTPS := getenvBool("FORCE_HTTPS", false)
+	forceTLS := getenvBool("FORCE_TLS", false)
 	readTimeout := mustGetenvDuration("READ_TIMEOUT", 5*time.Second)
 	writeTimeout := mustGetenvDuration("WRITE_TIMEOUT", 10*time.Second)
 	shutdownTimeout := mustGetenvDuration("SHUTDOWN_TIMEOUT", 10*time.Second)
@@ -229,6 +237,7 @@ func main() {
 	log.Printf("* refresh interval: %s", refreshInterval)
 	log.Printf("*           domain: %s", domain)
 	log.Printf("*         endpoint: %s", endpoint)
+	log.Printf("*        force TLS: %t", forceTLS)
 	log.Printf("* Listening on http://0.0.0.0%s", addr)
 	log.Printf("* Listening on http://[::]%s", addr)
 
@@ -240,7 +249,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		proxy(w, r, mapping, domain, forceHTTPS)
+		proxy(w, r, mapping, domain, forceTLS)
 	})
 
 	server := &http.Server{
