@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -83,12 +84,22 @@ func fetchDomains(ctx context.Context, url string) (map[string]string, error) {
 }
 
 func proxy(w http.ResponseWriter, r *http.Request, mapping *syncMap, domain string, forceTLS bool) {
+	requestID := r.Header.Get("X-Request-ID")
+	if requestID == "" {
+		id, err := uuid.NewRandom()
+		if err == nil {
+			requestID = id.String()
+		} else {
+			requestID = "unknown"
+		}
+	}
+
 	// r.TLS is always nil right now because Proxy doesn't support TLS natively.
 	// Here for future-proofing only.
 	isTLS := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
 
 	if forceTLS && !isTLS {
-		log.Printf("[%s] %s %s; 301 Moved Permanently; redirect http -> https", r.Host, r.Method, r.URL)
+		log.Printf("[%s] [%s] %s %s; 301 Moved Permanently; redirect http -> https", requestID, r.Host, r.Method, r.URL)
 		http.Redirect(w, r, "https://"+r.Host+r.URL.String(), http.StatusMovedPermanently)
 		return
 	}
@@ -98,25 +109,31 @@ func proxy(w http.ResponseWriter, r *http.Request, mapping *syncMap, domain stri
 	// If domain is example.com, then we want to proxy requests to
 	// foo.example.com, but not foo.bar.example.com.
 	if r.Host != subdomain+"."+domain {
-		log.Printf("[%s] %s %s; 502 Bad Gateway; error: invalid host: %q must be a subdomain of %q", r.Host, r.Method, r.URL, r.Host, domain)
+		log.Printf("[%s] [%s] %s %s; 502 Bad Gateway; error: invalid host: %q must be a subdomain of %q", requestID, r.Host, r.Method, r.URL, r.Host, domain)
 		w.WriteHeader(http.StatusBadGateway)
-		w.Write([]byte("502 Bad Gateway\n"))
+		if _, err := w.Write([]byte("502 Bad Gateway\n")); err != nil {
+			log.Printf("[%s] [%s] %s %s; error: failed to write 502 response (invalid subdomain): %v", requestID, r.Host, r.Method, r.URL, err)
+		}
 		return
 	}
 
 	target, ok := mapping.lookup(subdomain)
 	if !ok {
-		log.Printf("[%s] %s %s; 404 Not Found; warning: unknown host: %s", r.Host, r.Method, r.URL, r.Host)
+		log.Printf("[%s] [%s] %s %s; 404 Not Found; warning: unknown host: %s", requestID, r.Host, r.Method, r.URL, r.Host)
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("404 Not Found\n"))
+		if _, err := w.Write([]byte("404 Not Found\n")); err != nil {
+			log.Printf("[%s] [%s] %s %s; error: failed to write 404 response: %v", requestID, r.Host, r.Method, r.URL, err)
+		}
 		return
 	}
 
 	u, err := url.Parse(target)
 	if err != nil {
-		log.Printf("[%s] %s %s; 502 Bad Gateway; error: invalid url: %v", r.Host, r.Method, r.URL, err)
+		log.Printf("[%s] [%s] %s %s; 502 Bad Gateway; error: invalid url: %v", requestID, r.Host, r.Method, r.URL, err)
 		w.WriteHeader(http.StatusBadGateway)
-		w.Write([]byte("502 Bad Gateway\n"))
+		if _, err := w.Write([]byte("502 Bad Gateway\n")); err != nil {
+			log.Printf("[%s] [%s] %s %s; error: failed to write 502 response (invalid url): %v", requestID, r.Host, r.Method, r.URL, err)
+		}
 		return
 	}
 
@@ -147,7 +164,7 @@ func proxy(w http.ResponseWriter, r *http.Request, mapping *syncMap, domain stri
 		},
 		ModifyResponse: func(resp *http.Response) error {
 			resp.Header.Set("Server", "Proxy/2.0")
-			log.Printf("[%s] %s %s -> %s; %s", r.Host, r.Method, r.URL, resp.Request.URL, resp.Status)
+			log.Printf("[%s] [%s] %s %s -> %s; %s", requestID, r.Host, r.Method, r.URL, resp.Request.URL, resp.Status)
 			return nil
 		},
 	}
