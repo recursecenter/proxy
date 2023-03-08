@@ -107,7 +107,7 @@ func proxy(w http.ResponseWriter, r *http.Request, mapping *syncMap, domain stri
 
 	target, ok := mapping.lookup(subdomain)
 	if !ok {
-		log.Printf("[%s] %s %s; 404 Not Found; error: unknown host: %s", r.Host, r.Method, r.URL, r.Host)
+		log.Printf("[%s] %s %s; 404 Not Found; warning: unknown host: %s", r.Host, r.Method, r.URL, r.Host)
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("404 Not Found\n"))
 		return
