@@ -62,7 +62,6 @@ func fetchDomains(ctx context.Context, url string) (map[string]string, error) {
 		return nil, fmt.Errorf("received %d when fetching %s", resp.StatusCode, url)
 	}
 
-	// read bytes from resp as json
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -165,7 +164,18 @@ func getenv(key, fallback string) string {
 	return value
 }
 
-func getenvBool(key string, fallback bool) bool {
+func mustGetenv(key string) string {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		log.Fatalf("error: %s not set", key)
+	}
+
+	return value
+}
+
+// Returns the value of the environment variable as a bool.
+// Panics if the environment variable is set but fails to parse.
+func mustGetenvBool(key string, fallback bool) bool {
 	value, ok := os.LookupEnv(key)
 	if !ok {
 		return fallback
@@ -177,15 +187,6 @@ func getenvBool(key string, fallback bool) bool {
 	}
 
 	return b
-}
-
-func mustGetenv(key string) string {
-	value, ok := os.LookupEnv(key)
-	if !ok {
-		log.Fatalf("error: %s not set", key)
-	}
-
-	return value
 }
 
 // Returns the value of the environment variable as a time.Duration in seconds.
@@ -215,7 +216,7 @@ func main() {
 	addr := ":" + getenv("PORT", "80")
 	domain := mustGetenv("DOMAIN")
 	endpoint := mustGetenv("ENDPOINT")
-	forceTLS := getenvBool("FORCE_TLS", false)
+	forceTLS := mustGetenvBool("FORCE_TLS", false)
 	readTimeout := mustGetenvDuration("READ_TIMEOUT", 5*time.Second)
 	writeTimeout := mustGetenvDuration("WRITE_TIMEOUT", 10*time.Second)
 	shutdownTimeout := mustGetenvDuration("SHUTDOWN_TIMEOUT", 10*time.Second)
@@ -237,7 +238,7 @@ func main() {
 	log.Printf("* refresh interval: %s", refreshInterval)
 	log.Printf("*           domain: %s", domain)
 	log.Printf("*         endpoint: %s", endpoint)
-	log.Printf("*        force TLS: %t", forceTLS)
+	log.Printf("*        force tls: %t", forceTLS)
 	log.Printf("* Listening on http://0.0.0.0%s", addr)
 	log.Printf("* Listening on http://[::]%s", addr)
 
@@ -264,7 +265,7 @@ func main() {
 		for {
 			m, err := fetchDomains(ctx, endpoint)
 			if err != nil {
-				log.Printf("error: couldn't fetching domains: %v", err)
+				log.Printf("error: couldn't fetch domains endpoint: %v", err)
 			} else {
 				mapping.replace(m)
 			}
