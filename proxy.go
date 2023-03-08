@@ -83,7 +83,9 @@ func fetchDomains(ctx context.Context, url string) (map[string]string, error) {
 	return mapping, nil
 }
 
-func proxy(w http.ResponseWriter, r *http.Request, mapping *syncMap, domain string) {
+func proxy(w http.ResponseWriter, r *http.Request, mapping *syncMap, domain string, forceHTTPS bool) {
+	log.Printf("X-Forwarded-Proto: \"%s\"", r.Header.Get("X-Forwarded-Proto"))
+
 	subdomain := strings.Split(r.Host, ".")[0]
 
 	// If domain is example.com, then we want to proxy requests to
@@ -155,6 +157,20 @@ func getenv(key, fallback string) string {
 	return value
 }
 
+func getenvBool(key string, fallback bool) bool {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		return fallback
+	}
+
+	b, err := strconv.ParseBool(value)
+	if err != nil {
+		log.Fatalf("error: %s must be a boolean: %v", key, err)
+	}
+
+	return b
+}
+
 func mustGetenv(key string) string {
 	value, ok := os.LookupEnv(key)
 	if !ok {
@@ -191,6 +207,7 @@ func main() {
 	addr := ":" + getenv("PORT", "80")
 	domain := mustGetenv("DOMAIN")
 	endpoint := mustGetenv("ENDPOINT")
+	forceHTTPS := getenvBool("FORCE_HTTPS", false)
 	readTimeout := mustGetenvDuration("READ_TIMEOUT", 5*time.Second)
 	writeTimeout := mustGetenvDuration("WRITE_TIMEOUT", 10*time.Second)
 	shutdownTimeout := mustGetenvDuration("SHUTDOWN_TIMEOUT", 10*time.Second)
@@ -223,7 +240,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		proxy(w, r, mapping, domain)
+		proxy(w, r, mapping, domain, forceHTTPS)
 	})
 
 	server := &http.Server{
