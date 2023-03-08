@@ -134,6 +134,10 @@ func TestComment(t *testing.T) {
 	if env["FOO"] != "bar" {
 		t.Fatalf("expected FOO=bar, got %s", env["FOO"])
 	}
+
+	if env["BAZ"] != "qux" {
+		t.Fatalf("expected BAZ=qux, got %s", env["BAZ"])
+	}
 }
 
 func TestBad(t *testing.T) {
