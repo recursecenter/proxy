@@ -32,8 +32,14 @@
 # Dependencies:
 #  - curl (comes pre-installed on Heroku)
 #  - openssl (ditto)
-#  - jq (use the heroku-community/apt buildpack with "jq" in your Aptfile)
+#  - jq and libjq1 (use the heroku-community/apt buildpack with "jq" in your Aptfile)
 #  - acme.sh (installed and managed by this script)
+#
+# Heroku-buildpack-apt notes:
+#
+#  The jq package depends on libjq1, but if your Aptfile contains the only the former,
+#  the latter won't be installed. I'm not sure why this is, but adding libjq1 to the
+#  Aptfile explicitly fixed the problem
 #
 # Environmental variables:
 #  - DOMAIN
