@@ -156,11 +156,24 @@ function urlencode_path() {
     urlencode "$1" | sed 's/%2F/\//g'
 }
 
+# `openssl dgst` has different output on macOS (LibreSSL) and Linux (OpenSSL):
+# macOS: abc123
+# Linux: SHA256(stdin)= abc123
+#
+# This function extracts the last field of the output, which is the hexdigest on both platforms.
+function last_field() {
+    awk '{ print $NF }'
+}
+
+function sha256 {
+    openssl dgst -sha256 | last_field
+}
+
 function hmac_sha256 {
     local key="$1"
     local data="$2"
 
-    echo -n "$data" | openssl dgst -sha256 -mac HMAC -macopt "$key"
+    echo -n "$data" | openssl dgst -sha256 -mac HMAC -macopt "$key" | last_field
 }
 
 function aws_authorization_header() {
@@ -191,7 +204,7 @@ $hexdigest"
     local string_to_sign="AWS4-HMAC-SHA256
 $timestamp
 $scope
-$(echo -n "$canonical_request" | openssl dgst -sha256)"
+$(echo -n "$canonical_request" | sha256)"
 
     local date_key=$(hmac_sha256 key:"AWS4$AWS_SECRET_ACCESS_KEY" "$datestamp")
     local date_region_key=$(hmac_sha256 hexkey:"$date_key" "$region")
@@ -233,7 +246,7 @@ function s3_get_object() {
     local bucket="$1"
     local filename="$2"
 
-    local hexdigest=$(echo -n "" | openssl dgst -sha256)
+    local hexdigest=$(echo -n "" | sha256)
 
     s3_curl "GET" "$bucket" "$filename" "" "$hexdigest" --output "$filename"
 }
@@ -242,7 +255,7 @@ function s3_put_object() {
     local bucket="$1"
     local filename="$2"
 
-    local hexdigest=$(cat "$filename" | openssl dgst -sha256)
+    local hexdigest=$(cat "$filename" | sha256)
 
     s3_curl "PUT" "$bucket" "$filename" "" "$hexdigest" --upload-file "$filename"
 }
@@ -251,7 +264,7 @@ function s3_delete_object() {
     local bucket="$1"
     local filename="$2"
 
-    local hexdigest=$(echo -n "" | openssl dgst -sha256)
+    local hexdigest=$(echo -n "" | sha256)
 
     s3_curl "DELETE" "$bucket" "$filename" "" "$hexdigest"
 }
@@ -402,6 +415,8 @@ function restore_cache() {
 
 function usage() {
     echo "usage: $0 [--staging] issue [--force-install] <primary-domain> [additional-domains ...]"
+    echo "       NOTE: If you're issuing a wildcard certificate, put it in quotes (e.g. \"*.example.com\")!"
+    echo
     echo "       $0 [--staging] clear-cache"
 }   
 
