@@ -12,10 +12,10 @@ import (
 var (
 	lineRe = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)=(\S.*)$`)
 
-	// bare value (no white space) followed by optional whitespace and comment
+	// bare value (no white space) followed by optional whitespace and optional comment
 	bareRe = regexp.MustCompile(`^(\S+)\s*(:?#.*)?$`)
 
-	// quoted strings followed by optional whitespace and comment
+	// quoted strings followed by optional whitespace and optional comment
 	singleRe = regexp.MustCompile(`^'([^']*)'\s*(:?#.*)?$`)
 	doubleRe = regexp.MustCompile(`^"([^"]*)"\s*(:?#.*)?$`)
 )
