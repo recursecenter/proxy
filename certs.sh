@@ -396,6 +396,7 @@ function save_cache() {
     local cachefile="$2"
     local cachedir="$3"
 
+    echo "Saving cache to s3://$bucket/$cachefile"
     tar -czf "$cachefile" -C "$(dirname "$cachedir")" "$(basename "$cachedir")"
     s3_put_object "$bucket" "$cachefile"
 }
@@ -405,7 +406,9 @@ function restore_cache() {
     local cachefile="$2"
     local cachedir="$3"
 
+    echo "Restoring cache from s3://$bucket/$cachefile"
     if ! s3_get_object "$bucket" "$cachefile"; then
+        echo "Cache not found. Starting fresh."
         return
     fi
 
