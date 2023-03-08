@@ -34,6 +34,9 @@
 # Dependencies:
 #  - curl (comes pre-installed on Heroku)
 #  - openssl (ditto)
+#  - awk (ditto)
+#  - sed (ditto)
+#  - bash (ditto)
 #  - jq and libjq1 (use the heroku-community/apt buildpack with "jq" in your Aptfile)
 #  - acme.sh (installed and managed by this script)
 #

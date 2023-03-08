@@ -11,7 +11,7 @@ For simplicity, Proxy handles HTTP requests only. You should deploy it behind a 
 ## Dependencies
 
 - Go
-- curl, jq, and openssl (for certs.sh)
+- curl, jq, openssl, awk, sed, and bash (for certs.sh)
 
 ## Setup
 
