@@ -463,12 +463,9 @@ trap "echo 'error: \"$0 $1\" failed'" ERR
 
 case "$1" in
     issue)
-        shift
-
         force_install=false
-        if [ "$1" = "--force-install" ]; then
+        if [ "$#" -gt 1 ] && [ "$2" = "--force-install" ]; then
             force_install=true
-            shift
         fi
 
         wildcard="*.$DOMAIN"
