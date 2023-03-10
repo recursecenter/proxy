@@ -144,9 +144,9 @@ set -o pipefail # Fail a pipe if any subcommand fails
 
 function urlencode() {
     local string="$1"
-    local strlen=${#string}
-    local encoded=""
-    local pos c
+    local strlen encoded pos c
+    strlen=${#string}
+    encoded=""
 
     for (( pos=0 ; pos<strlen ; pos++ )); do
         c=${string:$pos:1}
@@ -192,12 +192,14 @@ function aws_authorization_header() {
     local timestamp="$7"
     local hexdigest="$8"
 
-    local datestamp=$(echo -n "$timestamp" | cut -c 1-8)
-    local signed_headers="host;x-amz-content-sha256;x-amz-date"
+    local datestamp signed_headers scope canonical_request string_to_sign
 
-    local scope="$datestamp/$region/$service/aws4_request"
+    datestamp=$(echo -n "$timestamp" | cut -c 1-8)
+    signed_headers="host;x-amz-content-sha256;x-amz-date"
 
-    local canonical_request="$method
+    scope="$datestamp/$region/$service/aws4_request"
+
+    canonical_request="$method
 $(urlencode_path "$canonical_uri")
 $(urlencode "$canonical_querystring")
 host:$host
@@ -207,17 +209,19 @@ x-amz-date:$timestamp
 $signed_headers
 $hexdigest"
 
-    local string_to_sign="AWS4-HMAC-SHA256
+    string_to_sign="AWS4-HMAC-SHA256
 $timestamp
 $scope
 $(echo -n "$canonical_request" | sha256)"
 
-    local date_key=$(echo -n "$datestamp" | hmac_sha256 key:"AWS4$AWS_SECRET_ACCESS_KEY")
-    local date_region_key=$(echo -n "$region" | hmac_sha256 hexkey:"$date_key")
-    local date_region_service_key=$(echo -n "$service" | hmac_sha256 hexkey:"$date_region_key")
-    local signing_key=$(echo -n "aws4_request" | hmac_sha256 hexkey:"$date_region_service_key")
+    local date_key date_region_key date_region_service_key signing_key signature
 
-    local signature=$(echo -n "$string_to_sign" | hmac_sha256 hexkey:"$signing_key")
+    date_key=$(echo -n "$datestamp" | hmac_sha256 key:"AWS4$AWS_SECRET_ACCESS_KEY")
+    date_region_key=$(echo -n "$region" | hmac_sha256 hexkey:"$date_key")
+    date_region_service_key=$(echo -n "$service" | hmac_sha256 hexkey:"$date_region_key")
+    signing_key=$(echo -n "aws4_request" | hmac_sha256 hexkey:"$date_region_service_key")
+
+    signature=$(echo -n "$string_to_sign" | hmac_sha256 hexkey:"$signing_key")
 
     echo "Authorization: AWS4-HMAC-SHA256 Credential=$AWS_ACCESS_KEY_ID/$scope,SignedHeaders=$signed_headers,Signature=$signature"
 }
@@ -231,12 +235,14 @@ function s3_curl() {
 
     shift 5
 
-    local timestamp=$(date -u +%Y%m%dT%H%M%SZ)
+    local timestamp host uri authorization
 
-    local host="s3.amazonaws.com"
-    local uri="/$bucket/$filename"
+    timestamp=$(date -u +%Y%m%dT%H%M%SZ)
 
-    local authorization=$(aws_authorization_header "$method" "$AWS_DEFAULT_REGION" "s3" "$host" "$uri" "$querystring" "$timestamp" "$hexdigest")
+    host="s3.amazonaws.com"
+    uri="/$bucket/$filename"
+
+    authorization=$(aws_authorization_header "$method" "$AWS_DEFAULT_REGION" "s3" "$host" "$uri" "$querystring" "$timestamp" "$hexdigest")
 
     curl --fail-with-body --silent \
          --request "$method" \
@@ -252,7 +258,8 @@ function s3_get_object() {
     local bucket="$1"
     local filename="$2"
 
-    local hexdigest=$(echo -n "" | sha256)
+    local hexdigest
+    hexdigest=$(echo -n "" | sha256)
 
     s3_curl "GET" "$bucket" "$filename" "" "$hexdigest" --output "$filename"
 }
@@ -261,7 +268,8 @@ function s3_put_object() {
     local bucket="$1"
     local filename="$2"
 
-    local hexdigest=$(cat "$filename" | sha256)
+    local hexdigest
+    hexdigest=$(cat "$filename" | sha256)
 
     s3_curl "PUT" "$bucket" "$filename" "" "$hexdigest" --upload-file "$filename"
 }
@@ -270,7 +278,8 @@ function s3_delete_object() {
     local bucket="$1"
     local filename="$2"
 
-    local hexdigest=$(echo -n "" | sha256)
+    local hexdigest
+    hexdigest=$(echo -n "" | sha256)
 
     s3_curl "DELETE" "$bucket" "$filename" "" "$hexdigest"
 }
@@ -294,7 +303,8 @@ function get_domain() {
 function endpoint_id_to_update() {
     local domain="$1"
 
-    local id="$(get_domain "$domain" | jq --raw-output '.sni_endpoint | .id')"
+    local id
+    id="$(get_domain "$domain" | jq --raw-output '.sni_endpoint | .id')"
 
     if [ "$id" = "null" ]; then
         id=""
@@ -419,7 +429,7 @@ function restore_cache() {
         return
     fi
 
-    tar -xzf "$cachefile" -C $(dirname "$cachedir")
+    tar -xzf "$cachefile" -C "$(dirname "$cachedir")"
 }
 
 function usage() {
@@ -434,7 +444,7 @@ if [ "$#" -lt 1 ]; then
     exit 1
 fi
 
-if [ "$1" = "--help" -o "$1" == "help" ]; then
+if [ "$1" = "--help" ] || [ "$1" == "help" ]; then
     usage
     exit 0
 fi
