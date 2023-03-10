@@ -4,10 +4,8 @@
 #
 # How it works:
 #
-#  `certs.sh issue` generates or renews certificates for a set of domains using
-#  Let's Encrypt, and installs them on Heroku. Crucially, it supports wildcard
-#  domains. The first domain specified is the primary domain. Certs.sh uses it
-#  to determine which of HEROKU_APP_NAME's domains to install the certificate on.
+#  `certs.sh issue` generates or renews a certificate for *.$DOMAIN, and
+#  registers it with Heroku.
 #
 #  Certs.sh uses acme.sh with the dns_aws dnsapi provider to satisfy the DNS-01 challenge.
 #
@@ -17,10 +15,6 @@
 #  Acme.sh state is cached encrypted in S3. This means you can run `certs.sh issue`
 #  as many times as you want. The certificate will only be renewed if it's nearing
 #  its expiration. Use Heroku Scheduler to run `certs.sh issue` daily.
-#
-#  If you use certs.sh to issue a wildcard certificate, make sure to put the wildcard
-#  domain in quotes (e.g. certs.sh issue "*.example.com"). Otherwise you might have
-#  shell globbing issues.
 #
 #  Acme.sh state is cached by app name ($HEROKU_APP_NAME.tar.gz), so multiple apps can
 #  use the same bucket to cache their state. Staging state is cached
@@ -51,6 +45,7 @@
 #  Aptfile explicitly fixed the problem.
 #
 # Environmental variables:
+#  - DOMAIN
 #  - HEROKU_APP_NAME
 #  - HEROKU_API_KEY
 #  - AWS_ACCESS_KEY_ID
@@ -384,22 +379,13 @@ function upgrade_acme_sh() {
     "$HOME/.acme.sh/acme.sh" --upgrade
 }
 
-function prepend_each_arg() {
-    local prefix="$1"
-    shift
-
-    for arg in "$@"; do
-        echo "$prefix" "$arg"
-    done
-}
-
 function issue_certificate() {
     local certfile="$1"
     local keyfile="$2"
     local flags="$3"
-    shift 3
+    local domain="$4"
 
-    "$HOME/.acme.sh/acme.sh" --issue --dns dns_aws --keylength ec-256 --key-file "$keyfile" --fullchain-file "$certfile" --log "$flags" $(prepend_each_arg --domain "$@")
+    "$HOME/.acme.sh/acme.sh" --issue --dns dns_aws --keylength ec-256 --key-file "$keyfile" --fullchain-file "$certfile" --log "$flags" --domain "$domain"
 }
 
 function renew_certificates_if_necessary() {
@@ -433,9 +419,7 @@ function restore_cache() {
 }
 
 function usage() {
-    echo "usage: $0 [--staging] issue [--force-install] <primary-domain> [additional-domains ...]"
-    echo "       NOTE: If you're issuing a wildcard certificate, put it in quotes (e.g. \"*.example.com\")!"
-    echo
+    echo "usage: $0 [--staging] issue [--force-install]"
     echo "       $0 [--staging] clear-cache"
 }   
 
@@ -456,6 +440,7 @@ if [ "$1" = "--staging" ]; then
     shift
 fi
 
+checkenv DOMAIN
 checkenv AWS_ACCESS_KEY_ID
 checkenv AWS_SECRET_ACCESS_KEY
 checkenv AWS_DEFAULT_REGION
@@ -486,16 +471,10 @@ case "$1" in
             shift
         fi
 
-        if [ "$#" -lt 1 ]; then
-            echo "error: no domains specified"
-            usage
-            exit 1
-        fi
+        wildcard="*.$DOMAIN"
 
-        primary_domain="$1"
-
-        keyfile="/tmp/$primary_domain.key"
-        certfile="/tmp/$primary_domain.crt"
+        keyfile="/tmp/$wildcard.key"
+        certfile="/tmp/$wildcard.crt"
 
         # We test for the existence of the certificate file to determine if the certificates
         # needed to be installed. Delete them here so that we don't accidentally think the certs
@@ -510,7 +489,7 @@ case "$1" in
             renew_certificates_if_necessary "$acmeflags"
         else
             install_acme_sh "$LETS_ENCRYPT_EMAIL"
-            issue_certificate "$certfile" "$keyfile" "$acmeflags" "$@"
+            issue_certificate "$certfile" "$keyfile" "$acmeflags" "$wildcard"
         fi
 
     	save_cache "$CERTS_BUCKET" "$cachefile" "$cachedir"
@@ -519,7 +498,7 @@ case "$1" in
         # If you want to test the Heroku API calls, use --force-install to force the certificates to be be put
         # in /tmp so that certs.sh won't exit early with "Nothing to install."
         if [ "$force_install" = true ]; then
-            "$HOME/.acme.sh/acme.sh" --install-cert --domain "$primary_domain" --key-file "$keyfile" --fullchain-file "$certfile"
+            "$HOME/.acme.sh/acme.sh" --install-cert --domain "$wildcard" --key-file "$keyfile" --fullchain-file "$certfile"
         fi
 
         # If the certificate file doesn't exist, then the certificates didn't need to be installed on Heroku.
@@ -528,15 +507,15 @@ case "$1" in
             exit 0
         fi
 
-        endpoint_id=$(endpoint_id_to_update "$primary_domain")
+        endpoint_id=$(endpoint_id_to_update "$wildcard")
 
         if [ -n "$endpoint_id" ]; then
-            echo "Updating certificate for $primary_domain on Heroku"
+            echo "Updating certificate for $wildcard on Heroku"
             update_sni_endpoint "$endpoint_id" "$certfile" "$keyfile" > /dev/null
         else
-            echo "Installing new certificate for $primary_domain on Heroku"
+            echo "Installing new certificate for $wildcard on Heroku"
             endpoint_id=$(create_sni_endpoint "$certfile" "$keyfile" | jq --raw-output '.id')
-            attach_sni_endpoint "$endpoint_id" "$primary_domain" > /dev/null
+            attach_sni_endpoint "$endpoint_id" "$wildcard" > /dev/null
         fi
         ;;
     clear-cache)
